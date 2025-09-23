@@ -7,3 +7,17 @@
     margin: 0 auto;
     max-width: 800px;
 }
+
+.slider {
+    width: 33%;
+}
+
+@media (max-width: 800px) {
+    .columns {
+        flex-direction: column;
+    }
+
+    .slider {
+        width: 100%;
+    }
+}

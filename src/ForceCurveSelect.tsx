@@ -165,6 +165,14 @@ function isTactile(option: CurveMetadata) {
     return option.tactileMax.force - option.tactileMin.force > TACTILE_THRESHOLD;
 }
 
+function forceInRange(force: number | undefined, range: [number, number] | undefined) {
+    if (!force || !range) {
+        return true;
+    }
+
+    return force >= range[0] && force <= range[1];
+}
+
 function filterSwitch(
     option: CurveOption,
     switchTypes?: SwitchTypeFilter,
@@ -184,20 +192,14 @@ function filterSwitch(
 
     const bottomOutForce = Math.round(metadata.bottomOut.force);
 
-    if (
-        bottomOutRange &&
-        (bottomOutForce < bottomOutRange[0] || bottomOutForce > bottomOutRange[1])
-    ) {
+    if (!forceInRange(bottomOutForce, bottomOutRange)) {
         return false;
     }
 
     if (metadata.tactileMax) {
         const tactilePeakForce = Math.round(metadata.tactileMax.force);
 
-        if (
-            tactilePeakRange &&
-            (tactilePeakForce < tactilePeakRange[0] || tactilePeakForce > tactilePeakRange[1])
-        ) {
+        if (!forceInRange(tactilePeakForce, tactilePeakRange)) {
             return false;
         }
     }

@@ -1,4 +1,4 @@
-import { Col, Form, Radio, Row, Slider } from 'antd';
+import { Col, Divider, Flex, Form, Radio, Row, Slider } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { Suspense, useState, useCallback, use, cache } from 'react';
 import { CurveFile, loadForceCurve, ForceCurve } from './curve';
@@ -18,9 +18,15 @@ interface FormValues {
 const marks: SliderMarks = {
     0: '0g',
     50: '50g',
-    100: '100g',
-    150: '150g',
+    100: '100g+',
 };
+
+function adjustRange(range: [number, number]): [number, number] {
+    if (range[1] >= 100) {
+        return [range[0], Infinity];
+    }
+    return range;
+}
 
 function App() {
     const [form] = useForm();
@@ -55,6 +61,7 @@ function App() {
                     form={form}
                     initialValues={{ displayMode, switchTypes, bottomOutForce, peakForce }}
                     onValuesChange={onValuesChanged}
+                    layout="vertical"
                 >
                     <Form.Item name="displayMode" label="Display">
                         <Radio.Group>
@@ -64,34 +71,42 @@ function App() {
                             <Radio.Button value="up">Upstroke</Radio.Button>
                         </Radio.Group>
                     </Form.Item>
-                    <Row>
-                        <Col span={11}>
-                            <Form.Item name="switchTypes" label="Filter Switches">
-                                <Radio.Group>
-                                    <Radio.Button value="all">All</Radio.Button>
-                                    <Radio.Button value="linear">Linear</Radio.Button>
-                                    <Radio.Button value="tactile">Tactile</Radio.Button>
-                                </Radio.Group>
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="bottomOutForce" label="Bottom Out">
-                                <Slider range min={0} max={150} step={5} marks={marks} />
-                            </Form.Item>
-                            <Form.Item name="peakForce" label="Tactile Force">
-                                <Slider range min={0} max={150} step={5} marks={marks} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+
+                    <Divider orientation="start">Select Switches</Divider>
+
                     <Form.Item>
                         <ForceCurveSelect
                             value={curves}
                             onChange={setCurves}
                             switchTypes={switchTypes}
-                            bottomOutRange={bottomOutForce}
-                            tactilePeakRange={peakForce}
+                            bottomOutRange={adjustRange(bottomOutForce)}
+                            tactilePeakRange={adjustRange(peakForce)}
                         />
                     </Form.Item>
+
+                    <Flex gap="middle" justify="space-between" className="columns">
+                        <Form.Item name="switchTypes" label="Feel">
+                            <Radio.Group>
+                                <Radio.Button value="all">All</Radio.Button>
+                                <Radio.Button value="linear">Linear</Radio.Button>
+                                <Radio.Button value="tactile">Tactile</Radio.Button>
+                            </Radio.Group>
+                        </Form.Item>
+                        <Form.Item
+                            name="peakForce"
+                            label="Tactile operating force"
+                            className="slider"
+                        >
+                            <Slider range min={0} max={100} step={5} marks={marks} />
+                        </Form.Item>
+                        <Form.Item
+                            name="bottomOutForce"
+                            label="Bottom out force"
+                            className="slider"
+                        >
+                            <Slider range min={0} max={100} step={5} marks={marks} />
+                        </Form.Item>
+                    </Flex>
                 </Form>
             </div>
         </div>
