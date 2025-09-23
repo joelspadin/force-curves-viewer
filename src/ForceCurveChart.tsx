@@ -2,6 +2,7 @@ import * as Plot from '@observablehq/plot';
 import React, { useEffect, useRef } from 'react';
 import { ForceCurve, TaggedPoint } from './curve';
 import './ForceCurveChart.css';
+import { Spin } from 'antd';
 
 type ChartType = ReturnType<typeof Plot.plot>;
 type LegendType = ReturnType<ChartType['legend']>;
@@ -14,7 +15,11 @@ export interface ForceCurveChartProps {
 }
 
 export const ForceCurveChartPlaceholder: React.FC = () => {
-    return <figure className="chart-container"></figure>;
+    return (
+        <figure className="chart-container placeholder">
+            <Spin />
+        </figure>
+    );
 };
 
 export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display }) => {
@@ -63,6 +68,7 @@ function getChart(
                 data,
                 x: (p: TaggedPoint) => strokeName(p),
                 // TODO: find a way to reverse the X axis for the up stroke
+                // Maybe do something like https://observablehq.com/@fil/subplots-1870
             };
             break;
 

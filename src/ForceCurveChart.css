@@ -8,6 +8,10 @@
     justify-content: center;
 }
 
+.chart-container.placeholder {
+    align-items: center;
+}
+
 .chart-container .chart {
     flex-shrink: 0;
     flex-grow: 0;
