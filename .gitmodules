@@ -1,0 +1,3 @@
+[submodule "force-curves"]
+	path = force-curves
+	url = https://github.com/ThereminGoat/force-curves.git

@@ -1,0 +1,28 @@
+.chart-container {
+    min-height: 450px;
+    margin-bottom: 1rem;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+}
+
+.chart-container .chart {
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
+.chart-container .legend {
+    min-width: 200px;
+    overflow: visible;
+    text-overflow: unset;
+}
+
+@media (max-width: 1000px) {
+    .chart-container {
+        flex-direction: column;
+    }
+}
+
+/* TODO: if display narrow, allow flex wrap */

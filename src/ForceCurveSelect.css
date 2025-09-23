@@ -1,0 +1,21 @@
+.curve-select {
+    width: 100%;
+}
+
+.curve-select strong {
+    font-weight: normal;
+}
+
+.curve-select-menu strong {
+    font-weight: 500;
+    color: #1890ff;
+}
+
+.curve-select-menu .name {
+    display: inline-block;
+    min-width: 16rem;
+}
+
+.curve-select-menu .metadata {
+    opacity: 0.65;
+}
