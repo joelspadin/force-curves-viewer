@@ -1,19 +1,53 @@
-import { Col, Divider, Flex, Form, Radio, Row, Slider } from 'antd';
+import { ConfigProvider, Divider, Flex, Form, Segmented, Slider, theme } from 'antd';
+import { App as AntApp } from 'antd/lib';
 import { useForm } from 'antd/lib/form/Form';
-import { Suspense, useState, useCallback, use, cache } from 'react';
-import { CurveFile, loadForceCurve, ForceCurve } from './curve';
+import { SliderMarks } from 'antd/lib/slider';
+import {
+    createContext,
+    Dispatch,
+    SetStateAction,
+    Suspense,
+    use,
+    useCallback,
+    useEffect,
+    useState,
+} from 'react';
+import { CurveFile, ForceCurve, loadForceCurve } from './curve';
 import { DisplayMode, ForceCurveChart, ForceCurveChartPlaceholder } from './ForceCurveChart';
 import { ForceCurveSelect, SwitchTypeFilter } from './ForceCurveSelect';
 
+import { MoonOutlined, SunOutlined } from '@ant-design/icons';
+import { SegmentedOptions } from 'antd/es/segmented';
 import './App.css';
-import { SliderMarks } from 'antd/lib/slider';
+import { useLocalStorage } from './util';
+
+const { useToken } = theme;
 
 interface FormValues {
     displayMode: DisplayMode;
     switchTypes: SwitchTypeFilter;
+    darkTheme: boolean;
     bottomOutForce: [number, number];
     peakForce: [number, number];
 }
+
+const displayModeOptions: SegmentedOptions<DisplayMode> = [
+    { value: 'combined', label: 'Combined' },
+    { value: 'separate', label: 'Separate' },
+    { value: 'down', label: 'Downstroke' },
+    { value: 'up', label: 'Upstroke' },
+];
+
+const themeOptions: SegmentedOptions<boolean> = [
+    { value: false, icon: <SunOutlined />, label: 'Light' },
+    { value: true, icon: <MoonOutlined />, label: 'Dark' },
+];
+
+const feelOptions: SegmentedOptions<SwitchTypeFilter> = [
+    { value: 'all', label: 'All' },
+    { value: 'linear', label: 'Linear' },
+    { value: 'tactile', label: 'Tactile' },
+];
 
 const marks: SliderMarks = {
     0: '0g',
@@ -28,19 +62,62 @@ function adjustRange(range: [number, number]): [number, number] {
     return range;
 }
 
-function App() {
-    const [form] = useForm();
-    const [displayMode, setDisplayMode] = useState<DisplayMode>('combined');
-    const [switchTypes, setSwitchTypes] = useState<SwitchTypeFilter>('all');
-    const [bottomOutForce, setBottomOutForce] = useState<[number, number]>([0, 150]);
-    const [peakForce, setPeakForce] = useState<[number, number]>([0, 150]);
+const DarkThemeContext = createContext<[boolean, Dispatch<SetStateAction<boolean>>]>([
+    false,
+    () => {},
+]);
 
+const defaultDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+function App() {
+    const [darkTheme, setDarkTheme] = useLocalStorage('forceCurve.darkTheme', defaultDarkTheme);
+
+    return (
+        <ConfigProvider
+            theme={{
+                algorithm: darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                cssVar: true,
+                hashed: false,
+            }}
+        >
+            <AntApp>
+                <DarkThemeContext value={[darkTheme, setDarkTheme]}>
+                    <MainLayout />
+                </DarkThemeContext>
+            </AntApp>
+        </ConfigProvider>
+    );
+}
+
+export default App;
+
+function MainLayout() {
+    const [form] = useForm();
+    const [displayMode, setDisplayMode] = useLocalStorage<DisplayMode>(
+        'forceCurve.displayMode',
+        'combined',
+    );
+    const [switchTypes, setSwitchTypes] = useLocalStorage<SwitchTypeFilter>(
+        'forceCurve.switchFeel',
+        'all',
+    );
+    const [bottomOutForce, setBottomOutForce] = useLocalStorage<[number, number]>(
+        'forceCurve.bottomOutForce',
+        [0, 150],
+    );
+    const [peakForce, setPeakForce] = useLocalStorage<[number, number]>(
+        'forceCurve.tactilePeakForce',
+        [0, 150],
+    );
+
+    const [darkTheme, setDarkTheme] = use(DarkThemeContext);
     const [curves, setCurves] = useState<CurveFile[]>([]);
     const getCurvesPromise = fetchForceCurves(curves);
 
     const onValuesChanged = useCallback(
         (values: Partial<FormValues>) => {
             values.displayMode && setDisplayMode(values.displayMode);
+            values.darkTheme !== undefined && setDarkTheme(values.darkTheme);
             values.switchTypes && setSwitchTypes(values.switchTypes);
             values.bottomOutForce && setBottomOutForce(values.bottomOutForce);
             values.peakForce && setPeakForce(values.peakForce);
@@ -48,8 +125,14 @@ function App() {
         [setDisplayMode],
     );
 
+    const { token } = useToken();
+
+    useEffect(() => {
+        document.body.style.backgroundColor = token.colorBgContainer;
+    }, [token]);
+
     return (
-        <div className="App">
+        <>
             <Suspense fallback={<ForceCurveChartPlaceholder />}>
                 <ForceCurveChartWrapper
                     getCurvesPromise={getCurvesPromise}
@@ -59,18 +142,24 @@ function App() {
             <div className="options">
                 <Form
                     form={form}
-                    initialValues={{ displayMode, switchTypes, bottomOutForce, peakForce }}
+                    initialValues={{
+                        displayMode,
+                        darkTheme,
+                        switchTypes,
+                        bottomOutForce,
+                        peakForce,
+                    }}
                     onValuesChange={onValuesChanged}
                     layout="vertical"
                 >
-                    <Form.Item name="displayMode" label="Display">
-                        <Radio.Group>
-                            <Radio.Button value="combined">Combined</Radio.Button>
-                            <Radio.Button value="separate">Separate</Radio.Button>
-                            <Radio.Button value="down">Downstroke</Radio.Button>
-                            <Radio.Button value="up">Upstroke</Radio.Button>
-                        </Radio.Group>
-                    </Form.Item>
+                    <Flex gap="large" justify="space-between" className="row">
+                        <Form.Item name="displayMode" label="Graph type">
+                            <Segmented options={displayModeOptions} size="large" />
+                        </Form.Item>
+                        <Form.Item name="darkTheme" label="Theme">
+                            <Segmented options={themeOptions} size="large" shape="round" />
+                        </Form.Item>
+                    </Flex>
 
                     <Divider orientation="start">Select Switches</Divider>
 
@@ -84,13 +173,9 @@ function App() {
                         />
                     </Form.Item>
 
-                    <Flex gap="middle" justify="space-between" className="columns">
+                    <Flex gap="large" justify="space-between" className="row">
                         <Form.Item name="switchTypes" label="Feel">
-                            <Radio.Group>
-                                <Radio.Button value="all">All</Radio.Button>
-                                <Radio.Button value="linear">Linear</Radio.Button>
-                                <Radio.Button value="tactile">Tactile</Radio.Button>
-                            </Radio.Group>
+                            <Segmented options={feelOptions} size="large" />
                         </Form.Item>
                         <Form.Item
                             name="peakForce"
@@ -109,15 +194,22 @@ function App() {
                     </Flex>
                 </Form>
             </div>
-        </div>
+        </>
     );
 }
 
-export default App;
+// React's cache() keeps re-evaluating this for some reason, so I'll do it myself.
+let forceCurvePromise: Promise<ForceCurve[]> | undefined;
+let cachedCurves: CurveFile[] | undefined;
 
-const fetchForceCurves = cache(async (curves: CurveFile[]) =>
-    Promise.all(curves.map(loadForceCurve)),
-);
+function fetchForceCurves(curves: CurveFile[]) {
+    if (!forceCurvePromise || curves !== cachedCurves) {
+        forceCurvePromise = Promise.all(curves.map(loadForceCurve));
+        cachedCurves = curves;
+    }
+
+    return forceCurvePromise;
+}
 
 interface ForceCurveChartWrapperProps {
     getCurvesPromise: Promise<ForceCurve[]>;

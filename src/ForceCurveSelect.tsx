@@ -1,9 +1,9 @@
-import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
 import { Divider, Select, Space } from 'antd';
+import fuzzysort from 'fuzzysort';
+import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
 import React, { Dispatch, useEffect, useState } from 'react';
 import { CurveFile, CurveMetadata, getForceCurves } from './curve';
 import { isDefined } from './util';
-import fuzzysort from 'fuzzysort';
 
 import './ForceCurveSelect.css';
 

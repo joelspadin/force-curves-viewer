@@ -1,8 +1,11 @@
 import * as Plot from '@observablehq/plot';
+import { Spin, theme } from 'antd';
 import React, { useEffect, useRef } from 'react';
 import { ForceCurve, TaggedPoint } from './curve';
+
 import './ForceCurveChart.css';
-import { Spin } from 'antd';
+
+const { useToken } = theme;
 
 type ChartType = ReturnType<typeof Plot.plot>;
 type LegendType = ReturnType<ChartType['legend']>;
@@ -23,6 +26,8 @@ export const ForceCurveChartPlaceholder: React.FC = () => {
 };
 
 export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display }) => {
+    const { token } = useToken();
+
     const chartRef = useRef<HTMLDivElement>(null);
     const legendRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +45,7 @@ export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display 
     }, [data, display]);
 
     return (
-        <figure className="chart-container">
+        <figure className="chart-container" style={{ color: token.colorText }}>
             <div className="chart" ref={chartRef}></div>
             <div className="legend" ref={legendRef}></div>
         </figure>
