@@ -3,16 +3,17 @@ export interface Point {
     force: number;
 }
 
-export interface CurveMetadata {
+export interface ForceCurveMetadata {
     bottomOut: Point;
-    tactileMax?: Point;
-    tactileMin?: Point;
+    tactileMax: Point;
+    tactileMin: Point;
+    isTactile: boolean;
 }
 
 export interface CurveFile {
     name: string;
     path: string;
-    metadata: () => Promise<CurveMetadata>;
+    metadata: () => Promise<ForceCurveMetadata>;
 }
 
 export interface TaggedPoint {
@@ -22,19 +23,16 @@ export interface TaggedPoint {
     upStroke: boolean;
 }
 
-export interface ForceCurve extends CurveMetadata {
+export interface ForceCurve extends ForceCurveMetadata {
     points: TaggedPoint[];
     bottomOut: TaggedPoint;
     tactileMax: TaggedPoint;
     tactileMin: TaggedPoint;
 }
 
-interface ForceCurveModule {
+interface ForceCurveModule extends ForceCurveMetadata {
     downstroke: Point[];
     upstroke: Point[];
-    bottomOut: Point;
-    tactileMax: Point;
-    tactileMin: Point;
 }
 
 const forceCurves = import.meta.glob<{ default: ForceCurveModule }>([
@@ -48,8 +46,8 @@ export function getForceCurves(): CurveFile[] {
         path,
         metadata: async () => {
             const data = await forceCurves[path]!();
-            const { bottomOut, tactileMax, tactileMin } = data.default;
-            return { bottomOut, tactileMax, tactileMin };
+            const { bottomOut, tactileMax, tactileMin, isTactile } = data.default;
+            return { bottomOut, tactileMax, tactileMin, isTactile };
         },
     }));
 }
@@ -63,7 +61,7 @@ export async function loadForceCurve(curve: CurveFile): Promise<ForceCurve> {
     const data = await curveGetter();
 
     const name = getSwitchName(curve.path);
-    const { downstroke, upstroke, bottomOut, tactileMax, tactileMin } = data.default;
+    const { downstroke, upstroke, bottomOut, tactileMax, tactileMin, isTactile } = data.default;
 
     return {
         // Place upstroke before downstroke so downstroke renders over upstroke.
@@ -74,6 +72,7 @@ export async function loadForceCurve(curve: CurveFile): Promise<ForceCurve> {
         bottomOut: tagPoint(bottomOut, name),
         tactileMax: tagPoint(tactileMax, name),
         tactileMin: tagPoint(tactileMin, name),
+        isTactile,
     };
 }
 

@@ -2,7 +2,7 @@ import { Divider, Select, Space } from 'antd';
 import fuzzysort from 'fuzzysort';
 import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
 import React, { Dispatch, use, useState } from 'react';
-import { CurveFile, CurveMetadata, getForceCurves, Point } from './curve';
+import { CurveFile, ForceCurveMetadata, getForceCurves } from './curve';
 import { isDefined } from './util';
 
 import './ForceCurveSelect.css';
@@ -24,7 +24,7 @@ const getCurveMetadata = Promise.all(
 interface CurveOption {
     path: string;
     name: string;
-    metadata?: CurveMetadata;
+    metadata?: ForceCurveMetadata;
 }
 
 export type SwitchTypeFilter = 'all' | 'linear' | 'tactile';
@@ -126,12 +126,12 @@ const OptionLabel: React.FC<OptionLabelProps> = ({ option, result }) => {
             {option.metadata && (
                 <>
                     <span className="metadata">
-                        {isTactile(option.metadata) ? 'Tactile' : 'Linear'}
+                        {option.metadata.isTactile ? 'Tactile' : 'Linear'}
                     </span>
                     <span className="metadata">
                         Bottom out: {Math.round(option.metadata.bottomOut.force)}g
                     </span>
-                    {isTactile(option.metadata) && (
+                    {option.metadata.isTactile && (
                         <span className="metadata">
                             Peak: {Math.round(option.metadata.tactileMax.force)}g at{' '}
                             {option.metadata.tactileMax.x.toFixed(1)} mm
@@ -142,18 +142,6 @@ const OptionLabel: React.FC<OptionLabelProps> = ({ option, result }) => {
         </Space>
     );
 };
-
-const TACTILE_THRESHOLD = 5;
-
-function isTactile(
-    option: CurveMetadata,
-): option is CurveMetadata & { tactileMin: Point; tactileMax: Point } {
-    if (option.tactileMax === undefined || option.tactileMin === undefined) {
-        return false;
-    }
-
-    return option.tactileMax.force - option.tactileMin.force > TACTILE_THRESHOLD;
-}
 
 function forceInRange(force: number | undefined, range: [number, number] | undefined) {
     if (!force || !range) {
@@ -175,7 +163,7 @@ function filterSwitch(
     }
 
     if (switchTypes && switchTypes !== 'all') {
-        if (isTactile(metadata) !== (switchTypes === 'tactile')) {
+        if (metadata.isTactile !== (switchTypes === 'tactile')) {
             return false;
         }
     }
@@ -186,7 +174,7 @@ function filterSwitch(
         return false;
     }
 
-    if (metadata.tactileMax) {
+    if (metadata.isTactile) {
         const tactilePeakForce = Math.round(metadata.tactileMax.force);
 
         if (!forceInRange(tactilePeakForce, tactilePeakRange)) {

@@ -1,16 +1,32 @@
-import { extname } from 'path';
-import { Plugin } from 'rollup';
+import 'core-js/actual/array/find-last-index.js';
 import { blur, groups, maxIndex, mean, minIndex, pairs } from 'd3-array';
 import { csvParse } from 'd3-dsv';
+import { extname } from 'path';
+import { Plugin } from 'rollup';
 import toSource from 'tosource';
-import 'core-js/actual/array/find-last-index.js';
 
 const HEADER_LINES = 5;
+
+const TACTILE_THRESHOLD = 5;
 
 interface Point {
     x: number;
     force: number;
 }
+
+interface ForceCurveMetadata {
+    bottomOut: Point;
+    tactileMax: Point;
+    tactileMin: Point;
+    isTactile: boolean;
+}
+
+interface ForceCurve {
+    downstroke: Point[];
+    upstroke: Point[];
+}
+
+type ForceCurveModule = ForceCurve & ForceCurveMetadata;
 
 export function forceCurvePlugin(): Plugin {
     return {
@@ -24,10 +40,10 @@ export function forceCurvePlugin(): Plugin {
             const rows = parseCsv(code);
             const [downstroke, upstroke] = partitionStrokes(rows).map(simplifyPoints);
 
-            const module = {
+            const module: ForceCurveModule = {
                 downstroke,
                 upstroke,
-                ...getKeyPoints(downstroke),
+                ...getMetadata(downstroke),
             };
 
             return {
@@ -143,7 +159,7 @@ function findBottomOutDisplacement(derivative2: Point[]) {
 const MAX_TACTILE_DISPLACEMENT = 3;
 const ZERO: Point = { x: 0, force: 0 };
 
-function getKeyPoints(downstroke: Point[]) {
+function getMetadata(downstroke: Point[]): ForceCurveMetadata {
     const velocity = getDerivative(downstroke);
     const accel = getDerivative(velocity);
 
@@ -160,10 +176,13 @@ function getKeyPoints(downstroke: Point[]) {
     const minima = findLocalMinima(downstroke).filter((p) => p.x > (tactileMax?.x ?? 0));
     const tactileMin = minElement(minima, (p) => p.force) ?? ZERO;
 
+    const isTactile = tactileMax.force - tactileMin.force > TACTILE_THRESHOLD;
+
     return {
         bottomOut,
         tactileMax,
         tactileMin,
+        isTactile,
     };
 }
 
