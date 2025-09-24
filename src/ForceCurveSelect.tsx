@@ -1,8 +1,8 @@
 import { Divider, Select, Space } from 'antd';
 import fuzzysort from 'fuzzysort';
 import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
-import React, { Dispatch, useEffect, useState } from 'react';
-import { CurveFile, CurveMetadata, getForceCurves } from './curve';
+import React, { Dispatch, use, useState } from 'react';
+import { CurveFile, CurveMetadata, getForceCurves, Point } from './curve';
 import { isDefined } from './util';
 
 import './ForceCurveSelect.css';
@@ -10,11 +10,7 @@ import './ForceCurveSelect.css';
 const { Option } = Select;
 
 const curves = getForceCurves();
-const noMetadata = curves.map((curve) => ({
-    name: curve.name,
-    path: curve.path,
-}));
-const metadata = Promise.all(
+const getCurveMetadata = Promise.all(
     curves.map(async (curve) => {
         const meta = await curve.metadata();
         return {
@@ -51,32 +47,26 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
     bottomOutRange,
     tactilePeakRange,
 }) => {
-    const [options, setOptions] = useState<CurveOption[]>(noMetadata);
+    const options = use(getCurveMetadata);
     const [search, setSearch] = useState('');
 
     const clearSearch = () => setSearch('');
-
-    useEffect(() => {
-        metadata.then(setOptions);
-    }, [metadata]);
 
     const filtered = options.filter((option) =>
         filterSwitch(option, switchTypes, bottomOutRange, tactilePeakRange),
     );
 
     const results = search
-        ? fuzzysort.go(search, filtered, { key: 'name' }).map((result) => ({
-              score: result.score,
-              key: result.obj.path,
-              name: result.obj.name,
-              label: getLabel(result),
-          }))
-        : filtered.map((obj) => ({
-              score: 0,
-              key: obj.path,
-              name: obj.name,
-              label: getLabel(obj),
-          }));
+        ? fuzzysort.go(search, filtered, { key: 'name' }).map((result) => (
+              <Option key={result.obj.path} score={result.score} name={result.obj.name}>
+                  <OptionLabel option={result.obj} result={result} />
+              </Option>
+          ))
+        : filtered.map((obj) => (
+              <Option key={obj.path} score={0} name={obj.name}>
+                  <OptionLabel option={obj} />
+              </Option>
+          ));
 
     const handleChange = (paths: string[]) => {
         const selected = paths
@@ -107,11 +97,7 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
             filterSort={filterSort}
             optionLabelProp="name"
         >
-            {results.map((result) => (
-                <Option key={result.key} score={result.score} name={result.name}>
-                    {result.label}
-                </Option>
-            ))}
+            {results}
         </Select>
     );
 };
@@ -126,10 +112,12 @@ function filterSort(a: DefaultOptionType, b: DefaultOptionType) {
     return b.score - a.score || a.name.localeCompare(b.name);
 }
 
-function getLabel(optionOrResult: CurveOption | Fuzzysort.KeyResult<CurveOption>) {
-    const result = 'obj' in optionOrResult ? optionOrResult : undefined;
-    const option = 'obj' in optionOrResult ? optionOrResult.obj : optionOrResult;
+interface OptionLabelProps {
+    option: CurveOption;
+    result?: Fuzzysort.KeyResult<CurveOption>;
+}
 
+const OptionLabel: React.FC<OptionLabelProps> = ({ option, result }) => {
     const name = result ? result.highlight((m, i) => <strong key={i}>{m}</strong>) : option.name;
 
     return (
@@ -145,19 +133,21 @@ function getLabel(optionOrResult: CurveOption | Fuzzysort.KeyResult<CurveOption>
                     </span>
                     {isTactile(option.metadata) && (
                         <span className="metadata">
-                            Peak: {Math.round(option.metadata.tactileMax!.force)}g at{' '}
-                            {option.metadata.tactileMax!.x.toFixed(1)} mm
+                            Peak: {Math.round(option.metadata.tactileMax.force)}g at{' '}
+                            {option.metadata.tactileMax.x.toFixed(1)} mm
                         </span>
                     )}
                 </>
             )}
         </Space>
     );
-}
+};
 
 const TACTILE_THRESHOLD = 5;
 
-function isTactile(option: CurveMetadata) {
+function isTactile(
+    option: CurveMetadata,
+): option is CurveMetadata & { tactileMin: Point; tactileMax: Point } {
     if (option.tactileMax === undefined || option.tactileMin === undefined) {
         return false;
     }

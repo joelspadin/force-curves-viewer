@@ -1,4 +1,4 @@
-import { ConfigProvider, Divider, Flex, Form, Segmented, Slider, theme } from 'antd';
+import { ConfigProvider, Divider, Flex, Form, Segmented, Skeleton, Slider, theme } from 'antd';
 import { App as AntApp } from 'antd/lib';
 import { useForm } from 'antd/lib/form/Form';
 import { SliderMarks } from 'antd/lib/slider';
@@ -164,13 +164,15 @@ function MainLayout() {
                     <Divider orientation="start">Select Switches</Divider>
 
                     <Form.Item>
-                        <ForceCurveSelect
-                            value={curves}
-                            onChange={setCurves}
-                            switchTypes={switchTypes}
-                            bottomOutRange={adjustRange(bottomOutForce)}
-                            tactilePeakRange={adjustRange(peakForce)}
-                        />
+                        <Suspense fallback={<Skeleton.Input active className="curve-select" />}>
+                            <ForceCurveSelect
+                                value={curves}
+                                onChange={setCurves}
+                                switchTypes={switchTypes}
+                                bottomOutRange={adjustRange(bottomOutForce)}
+                                tactilePeakRange={adjustRange(peakForce)}
+                            />
+                        </Suspense>
                     </Form.Item>
 
                     <Flex gap="large" justify="space-between" className="row">
