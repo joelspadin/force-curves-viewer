@@ -37,20 +37,21 @@ interface ForceCurveModule {
     tactileMin: Point;
 }
 
-const forceCurves = import.meta.glob<{ default: ForceCurveModule }>('../force-curves/**/*.csv');
+const forceCurves = import.meta.glob<{ default: ForceCurveModule }>([
+    '../force-curves/**/*.csv',
+    '!**/*HighResolutionRaw.csv',
+]);
 
 export function getForceCurves(): CurveFile[] {
-    return Object.keys(forceCurves)
-        .filter((path) => !path.includes('HighResolutionRaw'))
-        .map((path) => ({
-            name: getSwitchName(path),
-            path,
-            metadata: async () => {
-                const data = await forceCurves[path]!();
-                const { bottomOut, tactileMax, tactileMin } = data.default;
-                return { bottomOut, tactileMax, tactileMin };
-            },
-        }));
+    return Object.keys(forceCurves).map((path) => ({
+        name: getSwitchName(path),
+        path,
+        metadata: async () => {
+            const data = await forceCurves[path]!();
+            const { bottomOut, tactileMax, tactileMin } = data.default;
+            return { bottomOut, tactileMax, tactileMin };
+        },
+    }));
 }
 
 export async function loadForceCurve(curve: CurveFile): Promise<ForceCurve> {
