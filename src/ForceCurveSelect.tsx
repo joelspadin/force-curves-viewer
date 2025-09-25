@@ -2,19 +2,16 @@ import { Divider, Select, Space } from 'antd';
 import fuzzysort from 'fuzzysort';
 import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
 import React, { Dispatch, useState } from 'react';
-import { CurveFile, ForceCurveMetadata, getForceCurves } from './curve';
+import { CurveFile, getForceCurves } from './curve';
 import { isDefined } from './util';
 
 import './ForceCurveSelect.css';
 
-const { Option } = Select;
-
 const curves = getForceCurves();
 
-interface CurveOption {
-    path: string;
-    name: string;
-    metadata: ForceCurveMetadata;
+interface CurveOption extends DefaultOptionType {
+    score: number;
+    value: string;
 }
 
 export type SwitchTypeFilter = 'all' | 'linear' | 'tactile';
@@ -45,17 +42,19 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
         filterSwitch(option, switchTypes, bottomOutRange, tactilePeakRange),
     );
 
-    const results = search
-        ? fuzzysort.go(search, filtered, { key: 'name' }).map((result) => (
-              <Option key={result.obj.path} score={result.score} name={result.obj.name}>
-                  <OptionLabel option={result.obj} result={result} />
-              </Option>
-          ))
-        : filtered.map((obj) => (
-              <Option key={obj.path} score={0} name={obj.name}>
-                  <OptionLabel option={obj} />
-              </Option>
-          ));
+    const results: CurveOption[] = search
+        ? fuzzysort.go(search, filtered, { key: 'name' }).map((result) => ({
+              score: result.score,
+              value: result.obj.path,
+              name: result.obj.name,
+              label: <OptionLabel option={result.obj} result={result} />,
+          }))
+        : filtered.map((obj) => ({
+              score: 0,
+              value: obj.path,
+              name: obj.name,
+              label: <OptionLabel option={obj} />,
+          }));
 
     const handleChange = (paths: string[]) => {
         const selected = paths
@@ -85,25 +84,24 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
             filterOption={filterOption}
             filterSort={filterSort}
             optionLabelProp="name"
-        >
-            {results}
-        </Select>
+            options={results}
+        />
     );
 };
 
 const SCORE_THRESHOLD = -5000;
 
-const filterOption: FilterFunc<DefaultOptionType> = (_, option) => {
-    return option?.score >= SCORE_THRESHOLD;
+const filterOption: FilterFunc<CurveOption> = (_, option) => {
+    return (option?.score ?? 0) >= SCORE_THRESHOLD;
 };
 
-function filterSort(a: DefaultOptionType, b: DefaultOptionType) {
-    return b.score - a.score || a.name.localeCompare(b.name);
+function filterSort(a: CurveOption, b: CurveOption) {
+    return b.score - a.score || a.value.localeCompare(b.value);
 }
 
 interface OptionLabelProps {
-    option: CurveOption;
-    result?: Fuzzysort.KeyResult<CurveOption>;
+    option: CurveFile;
+    result?: Fuzzysort.KeyResult<CurveFile>;
 }
 
 const OptionLabel: React.FC<OptionLabelProps> = ({ option, result }) => {
@@ -141,7 +139,7 @@ function forceInRange(force: number | undefined, range: [number, number] | undef
 }
 
 function filterSwitch(
-    option: CurveOption,
+    option: CurveFile,
     switchTypes?: SwitchTypeFilter,
     bottomOutRange?: [number, number],
     tactilePeakRange?: [number, number],
