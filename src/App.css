@@ -3,9 +3,14 @@
     padding: 1rem 2rem;
 }
 
-.options {
+.options,
+.site-info {
     margin: 0 auto;
     max-width: 800px;
+}
+
+.site-info {
+    text-align: center;
 }
 
 .slider {

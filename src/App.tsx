@@ -16,7 +16,7 @@ import { CurveFile, ForceCurve, loadForceCurve } from './curve';
 import { DisplayMode, ForceCurveChart, ForceCurveChartPlaceholder } from './ForceCurveChart';
 import { ForceCurveSelect, SwitchTypeFilter } from './ForceCurveSelect';
 
-import { MoonOutlined, SunOutlined } from '@ant-design/icons';
+import { GithubFilled, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { SegmentedOptions } from 'antd/es/segmented';
 import './App.css';
 import { useLocalStorage } from './util';
@@ -71,7 +71,6 @@ const defaultDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').match
 
 function App() {
     const [darkTheme, setDarkTheme] = useLocalStorage('forceCurve.darkTheme', defaultDarkTheme);
-
     return (
         <ConfigProvider
             theme={{
@@ -80,11 +79,9 @@ function App() {
                 hashed: false,
             }}
         >
-            <AntApp>
-                <DarkThemeContext value={[darkTheme, setDarkTheme]}>
-                    <MainLayout />
-                </DarkThemeContext>
-            </AntApp>
+            <DarkThemeContext value={[darkTheme, setDarkTheme]}>
+                <MainLayout />
+            </DarkThemeContext>
         </ConfigProvider>
     );
 }
@@ -103,11 +100,11 @@ function MainLayout() {
     );
     const [bottomOutForce, setBottomOutForce] = useLocalStorage<[number, number]>(
         'forceCurve.bottomOutForce',
-        [0, 150],
+        [0, 100],
     );
     const [peakForce, setPeakForce] = useLocalStorage<[number, number]>(
         'forceCurve.tactilePeakForce',
-        [0, 150],
+        [0, 100],
     );
 
     const [darkTheme, setDarkTheme] = use(DarkThemeContext);
@@ -132,7 +129,7 @@ function MainLayout() {
     }, [token]);
 
     return (
-        <>
+        <AntApp style={{ color: token.colorText }}>
             <Suspense fallback={<ForceCurveChartPlaceholder />}>
                 <ForceCurveChartWrapper
                     getCurvesPromise={getCurvesPromise}
@@ -194,7 +191,30 @@ function MainLayout() {
                     </Flex>
                 </Form>
             </div>
-        </>
+
+            <div className="site-info">
+                <Divider />
+                <p>
+                    All force curve data{' '}
+                    <a
+                        href="https://github.com/ThereminGoat/force-curves"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        provided by ThereminGoat
+                    </a>
+                </p>
+                <p>
+                    <a
+                        href="https://github.com/joelspadin/force-curve-viewer"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        <GithubFilled /> View on GitHub
+                    </a>
+                </p>
+            </div>
+        </AntApp>
     );
 }
 
