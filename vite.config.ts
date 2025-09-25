@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { forceCurvePlugin } from './rollup-plugin-force-curve';
+import { defineConfig } from 'vite';
+import { forceCurveMetadataPlugin, forceCurvePlugin } from './rollup-plugin-force-curve';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -11,5 +11,6 @@ export default defineConfig({
             },
         }),
         forceCurvePlugin(),
+        forceCurveMetadataPlugin(),
     ],
 });

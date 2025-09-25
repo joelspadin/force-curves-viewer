@@ -1,7 +1,7 @@
 import { Divider, Select, Space } from 'antd';
 import fuzzysort from 'fuzzysort';
 import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
-import React, { Dispatch, use, useState } from 'react';
+import React, { Dispatch, useState } from 'react';
 import { CurveFile, ForceCurveMetadata, getForceCurves } from './curve';
 import { isDefined } from './util';
 
@@ -10,21 +10,11 @@ import './ForceCurveSelect.css';
 const { Option } = Select;
 
 const curves = getForceCurves();
-const getCurveMetadata = Promise.all(
-    curves.map(async (curve) => {
-        const meta = await curve.metadata();
-        return {
-            name: curve.name,
-            path: curve.path,
-            metadata: meta,
-        };
-    }),
-);
 
 interface CurveOption {
     path: string;
     name: string;
-    metadata?: ForceCurveMetadata;
+    metadata: ForceCurveMetadata;
 }
 
 export type SwitchTypeFilter = 'all' | 'linear' | 'tactile';
@@ -47,12 +37,11 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
     bottomOutRange,
     tactilePeakRange,
 }) => {
-    const options = use(getCurveMetadata);
     const [search, setSearch] = useState('');
 
     const clearSearch = () => setSearch('');
 
-    const filtered = options.filter((option) =>
+    const filtered = curves.filter((option) =>
         filterSwitch(option, switchTypes, bottomOutRange, tactilePeakRange),
     );
 
@@ -158,9 +147,6 @@ function filterSwitch(
     tactilePeakRange?: [number, number],
 ) {
     const metadata = option.metadata;
-    if (!metadata) {
-        return true;
-    }
 
     if (switchTypes && switchTypes !== 'all') {
         if (metadata.isTactile !== (switchTypes === 'tactile')) {

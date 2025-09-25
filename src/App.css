@@ -12,11 +12,6 @@
     width: 33%;
 }
 
-.ant-skeleton.curve-select,
-.ant-skeleton.ant-skeleton-element .ant-skeleton-input.curve-select {
-    width: 100%;
-}
-
 @media (max-width: 800px) {
     .row {
         flex-direction: column;

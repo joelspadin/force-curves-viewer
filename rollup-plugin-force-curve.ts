@@ -1,7 +1,7 @@
 import 'core-js/actual/array/find-last-index.js';
 import { blur, groups, maxIndex, mean, minIndex, pairs } from 'd3-array';
 import { csvParse } from 'd3-dsv';
-import { extname } from 'path';
+import path from 'path';
 import { Plugin } from 'rollup';
 import toSource from 'tosource';
 
@@ -26,30 +26,85 @@ interface ForceCurve {
     upstroke: Point[];
 }
 
-type ForceCurveModule = ForceCurve & ForceCurveMetadata;
+const forceCurvesPath = path.resolve(__dirname, 'force-curves');
 
+function isRawDataCsv(id: string) {
+    return path.extname(id) === '.csv' && !id.includes('HighResolutionRaw.csv');
+}
+
+/**
+ * Converts .css files to modules with exports: `{ curve: ForceCurve, metadata: ForceCurveMetadata }`.
+ */
 export function forceCurvePlugin(): Plugin {
     return {
         name: 'force-curve',
 
-        transform(code, id) {
-            if (extname(id) != '.csv') {
+        async load(id) {
+            if (!isRawDataCsv(id)) {
                 return null;
             }
 
-            const rows = parseCsv(code);
+            const csv = await this.fs.readFile(id, { encoding: 'utf8' });
+
+            const rows = parseCsv(csv);
             const [downstroke, upstroke] = partitionStrokes(rows).map(simplifyPoints);
 
-            const module: ForceCurveModule = {
-                downstroke,
-                upstroke,
-                ...getMetadata(downstroke),
-            };
+            const curve: ForceCurve = { downstroke, upstroke };
+            const metadata = getMetadata(downstroke);
 
             return {
-                code: `export default ${toSource(module)}`,
-                map: { mappings: '' },
+                code: `
+                    export const curve = ${toSource(curve)};
+                    export const metadata = ${toSource(metadata)};
+                `,
+                meta: {
+                    forceCurveMetadata: metadata,
+                },
             };
+        },
+    };
+}
+
+/**
+ * Collects all the metadata from .css files imported using forceCurvePlugin() and generates a "force-curve-metadata"
+ * module with exports: `{ default: Record<string, ForceCurveMetadata> }`. Each dictionary key is the path to the .csv
+ * file relative to the "force-curves" directory.
+ */
+export function forceCurveMetadataPlugin(): Plugin {
+    return {
+        name: 'force-curve-metadata',
+
+        resolveId(id) {
+            if (id === 'force-curve-metadata') {
+                return id;
+            }
+            return null;
+        },
+
+        async load(id) {
+            if (id !== 'force-curve-metadata') {
+                return null;
+            }
+
+            const metadata: Record<string, ForceCurveMetadata> = {};
+
+            for (const moduleId of this.getModuleIds()) {
+                if (!isRawDataCsv(moduleId)) {
+                    continue;
+                }
+
+                const module = await this.load({ id: moduleId });
+                const curveMetadata = module.meta.forceCurveMetadata as
+                    | ForceCurveMetadata
+                    | undefined;
+
+                if (curveMetadata) {
+                    const key = path.relative(forceCurvesPath, moduleId).replace(path.sep, '/');
+                    metadata[key] = curveMetadata;
+                }
+            }
+
+            return `export default ${toSource(metadata)};`;
         },
     };
 }
@@ -176,6 +231,7 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
     const minima = findLocalMinima(downstroke).filter((p) => p.x > (tactileMax?.x ?? 0));
     const tactileMin = minElement(minima, (p) => p.force) ?? ZERO;
 
+    // The switch is tactile if the force decreases at some point during the downstroke.
     const isTactile = tactileMax.force - tactileMin.force > TACTILE_THRESHOLD;
 
     return {

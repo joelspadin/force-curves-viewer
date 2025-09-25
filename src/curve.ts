@@ -1,25 +1,21 @@
+import type { ForceCurveMetadata } from 'force-curve-metadata';
+import forceCurveMetadata from 'force-curve-metadata';
+
+export type { ForceCurveMetadata } from 'force-curve-metadata';
+
 export interface Point {
     x: number;
     force: number;
 }
 
-export interface ForceCurveMetadata {
-    bottomOut: Point;
-    tactileMax: Point;
-    tactileMin: Point;
-    isTactile: boolean;
-}
-
 export interface CurveFile {
     name: string;
     path: string;
-    metadata: () => Promise<ForceCurveMetadata>;
+    metadata: ForceCurveMetadata;
 }
 
-export interface TaggedPoint {
+export interface TaggedPoint extends Point {
     name: string;
-    x: number;
-    force: number;
     upStroke: boolean;
 }
 
@@ -30,30 +26,31 @@ export interface ForceCurve extends ForceCurveMetadata {
     tactileMin: TaggedPoint;
 }
 
-interface ForceCurveModule extends ForceCurveMetadata {
-    downstroke: Point[];
-    upstroke: Point[];
+interface ForceCurveModule {
+    curve: {
+        downstroke: Point[];
+        upstroke: Point[];
+    };
+    metadata: ForceCurveMetadata;
 }
 
-const forceCurves = import.meta.glob<{ default: ForceCurveModule }>([
+const forceCurves = import.meta.glob<ForceCurveModule>([
     '../force-curves/**/*.csv',
     '!**/*HighResolutionRaw.csv',
 ]);
 
 export function getForceCurves(): CurveFile[] {
-    return Object.keys(forceCurves).map((path) => ({
-        name: getSwitchName(path),
-        path,
-        metadata: async () => {
-            const data = await forceCurves[path]!();
-            const { bottomOut, tactileMax, tactileMin, isTactile } = data.default;
-            return { bottomOut, tactileMax, tactileMin, isTactile };
-        },
-    }));
+    return Object.entries(forceCurveMetadata).map(([path, metadata]) => {
+        return {
+            name: getSwitchName(path),
+            path,
+            metadata,
+        };
+    });
 }
 
 export async function loadForceCurve(curve: CurveFile): Promise<ForceCurve> {
-    const curveGetter = forceCurves[curve.path];
+    const curveGetter = forceCurves['../force-curves/' + curve.path];
     if (!curveGetter) {
         throw new Error(`Invalid curve file ${curve.path}`);
     }
@@ -61,7 +58,8 @@ export async function loadForceCurve(curve: CurveFile): Promise<ForceCurve> {
     const data = await curveGetter();
 
     const name = getSwitchName(curve.path);
-    const { downstroke, upstroke, bottomOut, tactileMax, tactileMin, isTactile } = data.default;
+    const { downstroke, upstroke } = data.curve;
+    const { bottomOut, tactileMax, tactileMin, isTactile } = data.metadata;
 
     return {
         // Place upstroke before downstroke so downstroke renders over upstroke.
