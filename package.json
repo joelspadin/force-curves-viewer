@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && cross-env NODE_OPTIONS='--max-old-space-size=16384' vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
     "babel-plugin-react-compiler": "^19.1.0-rc.3",
+    "cross-env": "^10.0.0",
     "d3-array": "^3.2.4",
     "d3-dsv": "^3.0.1",
     "d3-interpolate": "^3.0.1",
