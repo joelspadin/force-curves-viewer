@@ -3,16 +3,14 @@ import { blur, groups, maxIndex, mean, minIndex, pairs } from 'd3-array';
 import { csvParse } from 'd3-dsv';
 import path from 'path';
 import { Plugin } from 'rollup';
+import simplify from 'simplify-js';
 import toSource from 'tosource';
 
 const HEADER_LINES = 5;
 
 const TACTILE_THRESHOLD = 5;
 
-interface Point {
-    x: number;
-    force: number;
-}
+type Point = [number, number];
 
 interface ForceCurveMetadata {
     bottomOut: Point;
@@ -113,35 +111,30 @@ function parseCsv(code: string): Point[] {
     code = code.split('\n').slice(HEADER_LINES).join('\n');
 
     const rows = csvParse(code).map<Point>((row) => {
-        return {
-            x: parseFloat(row.Displacement ?? '0'),
-            force: parseFloat(row.Force ?? '0'),
-        };
+        return [parseFloat(row.Displacement ?? '0'), parseFloat(row.Force ?? '0')];
     });
 
     // Throw out any negative displacements to make the charts look nicer.
-    return rows.filter((row) => row.x >= 0);
+    return rows.filter((row) => row[0] >= 0);
 }
 
 /**
  * Simplify values with the same displacement to just the first and last point
  * in each group.
  */
-function simplifyPoints(points: Point[]) {
-    return groups(points, (p) => p.x).flatMap(([_, group]) => {
-        if (group.length > 2) {
-            // TODO: should keep endpoints and min/max of group?
-            return [group.at(0)!, group.at(-1)!];
-        }
-        return group;
-    });
+function simplifyPoints(points: Point[]): Point[] {
+    const xy = points.map((p) => ({ x: p[0], y: p[1] }));
+
+    const simplified = simplify(xy, 0.01);
+
+    return simplified.map((p) => [p.x, p.y]);
 }
 
 /**
  * Splits points into [downstroke, upstroke]
  */
 function partitionStrokes(points: Point[]): [Point[], Point[]] {
-    const index = maxIndex(points, (p) => p.x);
+    const index = maxIndex(points, (p) => p[0]);
     return [points.slice(0, index), points.slice(index)];
 }
 
@@ -149,22 +142,16 @@ function partitionStrokes(points: Point[]): [Point[], Point[]] {
  * Estimates the 1st derivative of the points
  */
 function getDerivative(points: Point[]): Point[] {
-    points = groups(points, (p) => p.x).map(([x, group]) => ({
-        x,
-        force: mean(group, (p) => p.force) ?? 0,
-    }));
+    points = groups(points, (p) => p[0]).map(([x, group]) => [x, mean(group, (p) => p[1]) ?? 0]);
 
-    const result = pairs(points, (a, b) => b.force - a.force);
+    const result = pairs(points, (a, b) => b[1] - a[1]);
     blur(result, 7);
 
-    return points.map((p, i) => ({
-        x: p.x,
-        force: result[i],
-    }));
+    return points.map((p, i) => [p[0], result[i]]);
 }
 
 function findLocalMaxima(points: Point[]) {
-    let forces = points.map((p) => p.force);
+    let forces = points.map((p) => p[1]);
     blur(forces, 7);
 
     let max: Point | undefined = undefined;
@@ -183,7 +170,7 @@ function findLocalMaxima(points: Point[]) {
 }
 
 function findLocalMinima(points: Point[]) {
-    let forces = points.map((p) => p.force);
+    let forces = points.map((p) => p[1]);
     blur(forces, 7);
 
     let min: Point | undefined = undefined;
@@ -203,36 +190,36 @@ function findLocalMinima(points: Point[]) {
 
 function findBottomOutDisplacement(derivative2: Point[]) {
     for (let i = derivative2.length - 2; i >= 0; i--) {
-        if (derivative2[i].force < derivative2[i + 1].force) {
-            return derivative2[i].x;
+        if (derivative2[i][1] < derivative2[i + 1][1]) {
+            return derivative2[i][0];
         }
     }
 
-    return derivative2.at(-1)?.x!;
+    return derivative2.at(-1)?.[0]!;
 }
 
 const MAX_TACTILE_DISPLACEMENT = 3;
-const ZERO: Point = { x: 0, force: 0 };
+const ZERO: Point = [0, 0];
 
 function getMetadata(downstroke: Point[]): ForceCurveMetadata {
     const velocity = getDerivative(downstroke);
     const accel = getDerivative(velocity);
 
     const bottomOutDisplacement = findBottomOutDisplacement(accel);
-    const bottomOut = downstroke.find((p) => p.x >= bottomOutDisplacement) ?? ZERO;
+    const bottomOut = downstroke.find((p) => p[0] >= bottomOutDisplacement) ?? ZERO;
 
     // Determine the max tactile point to be the largest local maximum before
     // some arbitrary displacement, so we don't select bumps in the bottom out.
-    const maxima = findLocalMaxima(downstroke).filter((p) => p.x < MAX_TACTILE_DISPLACEMENT);
-    const tactileMax = maxElement(maxima, (p) => p.force) ?? ZERO;
+    const maxima = findLocalMaxima(downstroke).filter((p) => p[0] < MAX_TACTILE_DISPLACEMENT);
+    const tactileMax = maxElement(maxima, (p) => p[1]) ?? ZERO;
 
     // Determine the min tactile point to be the smallest local minimum that
     // occurs after the max point.
-    const minima = findLocalMinima(downstroke).filter((p) => p.x > (tactileMax?.x ?? 0));
-    const tactileMin = minElement(minima, (p) => p.force) ?? ZERO;
+    const minima = findLocalMinima(downstroke).filter((p) => p[0] > (tactileMax?.[0] ?? 0));
+    const tactileMin = minElement(minima, (p) => p[1]) ?? ZERO;
 
     // The switch is tactile if the force decreases at some point during the downstroke.
-    const isTactile = tactileMax.force - tactileMin.force > TACTILE_THRESHOLD;
+    const isTactile = tactileMax[1] - tactileMin[1] > TACTILE_THRESHOLD;
 
     return {
         bottomOut,

@@ -116,12 +116,12 @@ const OptionLabel: React.FC<OptionLabelProps> = ({ option, result }) => {
                         {option.metadata.isTactile ? 'Tactile' : 'Linear'}
                     </span>
                     <span className="metadata">
-                        Bottom out: {Math.round(option.metadata.bottomOut.force)}g
+                        Bottom out: {Math.round(option.metadata.bottomOut[1])}g
                     </span>
                     {option.metadata.isTactile && (
                         <span className="metadata">
-                            Peak: {Math.round(option.metadata.tactileMax.force)}g at{' '}
-                            {option.metadata.tactileMax.x.toFixed(1)} mm
+                            Peak: {Math.round(option.metadata.tactileMax[1])}g at{' '}
+                            {option.metadata.tactileMax[0].toFixed(1)} mm
                         </span>
                     )}
                 </>
@@ -152,14 +152,14 @@ function filterSwitch(
         }
     }
 
-    const bottomOutForce = Math.round(metadata.bottomOut.force);
+    const bottomOutForce = Math.round(metadata.bottomOut[1]);
 
     if (!forceInRange(bottomOutForce, bottomOutRange)) {
         return false;
     }
 
     if (metadata.isTactile) {
-        const tactilePeakForce = Math.round(metadata.tactileMax.force);
+        const tactilePeakForce = Math.round(metadata.tactileMax[1]);
 
         if (!forceInRange(tactilePeakForce, tactilePeakRange)) {
             return false;

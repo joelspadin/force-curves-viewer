@@ -1,12 +1,7 @@
-import type { ForceCurveMetadata } from 'force-curve-metadata';
+import type { ForceCurveMetadata, Point } from 'force-curve-metadata';
 import forceCurveMetadata from 'force-curve-metadata';
 
 export type { ForceCurveMetadata } from 'force-curve-metadata';
-
-export interface Point {
-    x: number;
-    force: number;
-}
 
 export interface CurveFile {
     name: string;
@@ -14,16 +9,19 @@ export interface CurveFile {
     metadata: ForceCurveMetadata;
 }
 
-export interface TaggedPoint extends Point {
+export interface TaggedPoint {
+    x: number;
+    force: number;
     name: string;
     upStroke: boolean;
 }
 
-export interface ForceCurve extends ForceCurveMetadata {
+export interface ForceCurve {
     points: TaggedPoint[];
     bottomOut: TaggedPoint;
     tactileMax: TaggedPoint;
     tactileMin: TaggedPoint;
+    isTactile: boolean;
 }
 
 interface ForceCurveModule {
@@ -90,5 +88,5 @@ function getSwitchName(path: string) {
 }
 
 function tagPoint(point: Point, name: string, upStroke = false): TaggedPoint {
-    return { ...point, name, upStroke };
+    return { x: point[0], force: point[1], name, upStroke };
 }
