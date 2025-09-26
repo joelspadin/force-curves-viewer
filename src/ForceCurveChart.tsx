@@ -125,25 +125,20 @@ function getChart(
             labelAnchor: 'center',
             labelOffset: 58,
             grid: true,
-            domain: [0, 100],
+            domain: [0, 120],
         },
         facet,
         color: {
+            // Based on seaborn's "Paired" palette
             type: 'categorical',
             range: [
-                // Blue
-                'rgb(31, 119, 180)',
-                'rgb(181, 210, 230)',
-                // Orange
-                'rgb(255, 127, 14)',
-                'rgb(255, 213, 176)',
-                // Green
-                'rgb(44, 160, 44)',
-                'rgb(185, 224, 185)',
-                // Red
-                'rgb(214, 39, 40)',
-                'rgb(241, 184, 184)',
-            ],
+                'rgb(31, 120, 180)',
+                'rgb(255, 127, 0)',
+                'rgb(51, 160, 44)',
+                'rgb(227, 26, 28)',
+                'rgb(106, 61, 154)',
+                'rgb(255, 224, 31)',
+            ].flatMap((color) => [color, setOpacity(color, 0.3)]),
         },
         style: {
             fontSize: '1rem',
@@ -165,4 +160,8 @@ function getChart(
 
 function strokeName(point: TaggedPoint) {
     return point.upStroke ? 'Up' : 'Down';
+}
+
+function setOpacity(color: string, opacity: number) {
+    return color.replace(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/, `rgba($1, $2, $3, ${opacity})`);
 }
