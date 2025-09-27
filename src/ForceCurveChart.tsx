@@ -11,10 +11,16 @@ type ChartType = ReturnType<typeof Plot.plot>;
 
 export type DisplayMode = 'combined' | 'separate' | 'down' | 'up';
 
+export interface ForceCurveChartMarks {
+    bottomOut?: boolean;
+    peak?: boolean;
+    trough?: boolean;
+}
+
 export interface ForceCurveChartProps {
     data: ForceCurve[];
     display?: DisplayMode;
-    markPoints?: boolean;
+    marks?: ForceCurveChartMarks;
 }
 
 export const ForceCurveChartPlaceholder: React.FC = () => {
@@ -31,12 +37,12 @@ interface LegendEntry {
     upColor?: string;
 }
 
-export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display, markPoints }) => {
+export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display, marks }) => {
     const { token } = useToken();
 
     const chartRef = useRef<HTMLDivElement>(null);
 
-    const [chart, legend] = useChart(data, display, markPoints);
+    const [chart, legend] = useChart(data, display, marks);
 
     const legendInside = legend.length <= 4 && display != 'separate';
 
@@ -80,14 +86,21 @@ const SwatchColor: React.FC<SwatchColorProps> = ({ color, title }) => {
     return <div className="swatch-color" title={title} style={{ backgroundColor: color }}></div>;
 };
 
+const maxForceMargin = 40;
+
 function useChart(
     curves: ForceCurve[],
     display: DisplayMode = 'combined',
-    markPoints: boolean = false,
+    marks?: ForceCurveChartMarks,
 ): [ChartType, LegendEntry[]] {
     const data = curves.flatMap((c) => c.points);
     const bottom = curves.flatMap((c) => c.bottomOut);
     const peak = curves.filter((c) => c.isTactile).flatMap((c) => c.tactileMax);
+
+    let maxForce = 120;
+    for (const point of [...bottom, ...peak]) {
+        maxForce = Math.max(maxForce, point.force + maxForceMargin);
+    }
 
     let facet: Plot.PlotFacetOptions | undefined = undefined;
     let filter: Plot.ChannelValue | undefined = undefined;
@@ -129,7 +142,7 @@ function useChart(
         return seriesNames.get(key) || setSeriesName(key, `${p.name} (${strokeName(p)})`);
     };
 
-    const marks: Plot.Markish[] = [
+    const plotMarks: Plot.Markish[] = [
         Plot.line(data, {
             x: 'x',
             y: 'force',
@@ -140,8 +153,8 @@ function useChart(
         }),
     ];
 
-    if (markPoints) {
-        marks.push(
+    if (marks?.bottomOut) {
+        plotMarks.push(
             Plot.dot(bottom, {
                 x: 'x',
                 y: 'force',
@@ -152,6 +165,10 @@ function useChart(
                 r: 4,
                 title: (p: TaggedPoint) => `Bottom out: ${p.force}g @ ${p.x}mm`,
             }),
+        );
+    }
+    if (marks?.peak) {
+        plotMarks.push(
             Plot.dot(peak, {
                 x: 'x',
                 y: 'force',
@@ -164,6 +181,22 @@ function useChart(
             }),
         );
     }
+    if (marks?.trough) {
+        const trough = curves.filter((c) => c.isTactile).flatMap((c) => c.tactileMin);
+
+        plotMarks.push(
+            Plot.dot(trough, {
+                x: 'x',
+                y: 'force',
+                facet: 'exclude',
+                stroke: 'currentColor',
+                fill: getSeriesName,
+                filter,
+                r: 4,
+                title: (p: TaggedPoint) => `Trough: ${p.force}g @ ${p.x}mm`,
+            }),
+        );
+    }
 
     // TODO: chart sorts items by name, but I would rather they be not sorted at all.
     // Make multiple lines and color them separately?
@@ -172,7 +205,7 @@ function useChart(
         height: 450,
         marginLeft: 70,
         marginBottom: 60,
-        marks,
+        marks: plotMarks,
         x: {
             label: 'Displacement (mm)',
             labelAnchor: 'center',
@@ -184,7 +217,7 @@ function useChart(
             labelAnchor: 'center',
             labelOffset: 60,
             grid: true,
-            domain: [0, 120],
+            domain: [0, maxForce],
         },
         facet,
         color: {

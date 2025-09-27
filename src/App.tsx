@@ -1,4 +1,13 @@
-import { ConfigProvider, Divider, Flex, Form, Segmented, Slider, Switch, theme } from 'antd';
+import {
+    Checkbox,
+    CheckboxOptionType,
+    ConfigProvider,
+    Divider,
+    Form,
+    Segmented,
+    Slider,
+    theme,
+} from 'antd';
 import { App as AntApp } from 'antd/lib';
 import { useForm } from 'antd/lib/form/Form';
 import { SliderMarks } from 'antd/lib/slider';
@@ -13,8 +22,13 @@ import {
     useState,
 } from 'react';
 import { CurveFile, ForceCurve, loadForceCurve } from './curve';
-import { DisplayMode, ForceCurveChart, ForceCurveChartPlaceholder } from './ForceCurveChart';
-import { ForceCurveSelect, SwitchTypeFilter } from './ForceCurveSelect';
+import {
+    DisplayMode,
+    ForceCurveChart,
+    ForceCurveChartMarks,
+    ForceCurveChartPlaceholder,
+} from './ForceCurveChart';
+import { ForceCurveSelect, SortOrder, SwitchTypeFilter } from './ForceCurveSelect';
 
 import { GithubFilled, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { SegmentedOptions } from 'antd/es/segmented';
@@ -23,12 +37,17 @@ import { useLocalStorage } from './util';
 
 const { useToken } = theme;
 
+type Mark = 'peak' | 'min' | 'bottomOut';
+
 interface FormValues {
     displayMode: DisplayMode;
-    markPoints: boolean;
-    switchTypes: SwitchTypeFilter;
+    marks: Mark[];
     darkTheme: boolean;
+    switchTypes: SwitchTypeFilter;
+    sortOrder: SortOrder;
+    invertSort: boolean;
     bottomOutForce: [number, number];
+    bottomOutDistance: [number, number];
     peakForce: [number, number];
 }
 
@@ -37,6 +56,12 @@ const displayModeOptions: SegmentedOptions<DisplayMode> = [
     { value: 'separate', label: 'Separate' },
     { value: 'down', label: 'Downstroke' },
     { value: 'up', label: 'Upstroke' },
+];
+
+const markOptions: CheckboxOptionType<Mark>[] = [
+    { value: 'peak', label: 'Peak' },
+    { value: 'min', label: 'Trough' },
+    { value: 'bottomOut', label: 'Bottom out' },
 ];
 
 const themeOptions: SegmentedOptions<boolean> = [
@@ -50,14 +75,35 @@ const feelOptions: SegmentedOptions<SwitchTypeFilter> = [
     { value: 'tactile', label: 'Tactile' },
 ];
 
-const marks: SliderMarks = {
-    0: '0g',
-    50: '50g',
-    100: '100g+',
+const sortOptions: SegmentedOptions<SortOrder> = [
+    { value: 'alphabetical', label: 'Alphabetical' },
+    { value: 'tactilePeak', label: 'Peak force' },
+    { value: 'bottomOut', label: 'Bottom out force' },
+    { value: 'travel', label: 'Total travel' },
+];
+
+const sortOrderOptions: SegmentedOptions<boolean> = [
+    { value: false, label: 'Ascending' },
+    { value: true, label: 'Descending' },
+];
+
+const forceMarks: SliderMarks = {
+    0: '0',
+    50: '50',
+    100: '100+',
 };
 
-function adjustRange(range: [number, number]): [number, number] {
-    if (range[1] >= 100) {
+const distanceMarks: SliderMarks = {
+    0: '0',
+    1: '1',
+    2: '2',
+    3: '3',
+    4: '4',
+    5: '5+',
+};
+
+function adjustRange(range: [number, number], max = 100): [number, number] {
+    if (range[1] >= max) {
         return [range[0], Infinity];
     }
     return range;
@@ -95,14 +141,23 @@ function MainLayout() {
         'forceCurve.displayMode',
         'combined',
     );
-    const [markPoints, setMarkPoints] = useLocalStorage<boolean>('forceCurve.markPoints', true);
+    const [marks, setMarks] = useLocalStorage<Mark[]>('forceCurve.marks', []);
     const [switchTypes, setSwitchTypes] = useLocalStorage<SwitchTypeFilter>(
         'forceCurve.switchFeel',
         'all',
     );
+    const [sortOrder, setSortOrder] = useLocalStorage<SortOrder>(
+        'forceCurve.sortOrder',
+        'alphabetical',
+    );
+    const [invertSort, setInvertSort] = useLocalStorage<boolean>('forceCurve.invertSort', false);
     const [bottomOutForce, setBottomOutForce] = useLocalStorage<[number, number]>(
         'forceCurve.bottomOutForce',
         [0, 100],
+    );
+    const [bottomOutDistance, setBottomOutDistance] = useLocalStorage<[number, number]>(
+        'forceCurve.bottomOutDistance',
+        [0, 5],
     );
     const [peakForce, setPeakForce] = useLocalStorage<[number, number]>(
         'forceCurve.tactilePeakForce',
@@ -116,10 +171,13 @@ function MainLayout() {
     const onValuesChanged = useCallback(
         (values: Partial<FormValues>) => {
             values.displayMode && setDisplayMode(values.displayMode);
-            values.markPoints !== undefined && setMarkPoints(values.markPoints);
+            values.marks && setMarks(values.marks);
             values.darkTheme !== undefined && setDarkTheme(values.darkTheme);
             values.switchTypes && setSwitchTypes(values.switchTypes);
+            values.sortOrder && setSortOrder(values.sortOrder);
+            values.invertSort !== undefined && setInvertSort(values.invertSort);
             values.bottomOutForce && setBottomOutForce(values.bottomOutForce);
+            values.bottomOutDistance && setBottomOutDistance(values.bottomOutDistance);
             values.peakForce && setPeakForce(values.peakForce);
         },
         [setDisplayMode],
@@ -137,7 +195,11 @@ function MainLayout() {
                 <ForceCurveChartWrapper
                     getCurvesPromise={getCurvesPromise}
                     displayMode={displayMode}
-                    markPoints={markPoints}
+                    marks={{
+                        peak: marks.includes('peak'),
+                        trough: marks.includes('min'),
+                        bottomOut: marks.includes('bottomOut'),
+                    }}
                 />
             </Suspense>
             <div className="options">
@@ -145,26 +207,29 @@ function MainLayout() {
                     form={form}
                     initialValues={{
                         displayMode,
-                        markPoints,
+                        marks,
                         darkTheme,
                         switchTypes,
+                        sortOrder,
+                        invertSort,
                         bottomOutForce,
+                        bottomOutDistance,
                         peakForce,
                     }}
                     onValuesChange={onValuesChanged}
                     layout="vertical"
                 >
-                    <Flex gap="large" justify="space-between" className="row">
-                        <Form.Item name="displayMode" label="Graph type">
-                            <Segmented options={displayModeOptions} size="large" />
+                    <div className="row">
+                        <Form.Item name="displayMode" label="Chart type">
+                            <Segmented options={displayModeOptions} />
                         </Form.Item>
-                        <Form.Item name="markPoints" label="Mark key points">
-                            <Switch />
+                        <Form.Item name="marks" label="Chart marks">
+                            <Checkbox.Group options={markOptions} />
                         </Form.Item>
                         <Form.Item name="darkTheme" label="Theme">
-                            <Segmented options={themeOptions} size="large" shape="round" />
+                            <Segmented options={themeOptions} shape="round" />
                         </Form.Item>
-                    </Flex>
+                    </div>
 
                     <Divider orientation="start">Select Switches</Divider>
 
@@ -173,30 +238,48 @@ function MainLayout() {
                             value={curves}
                             onChange={setCurves}
                             switchTypes={switchTypes}
-                            bottomOutRange={adjustRange(bottomOutForce)}
-                            tactilePeakRange={adjustRange(peakForce)}
+                            sortOrder={sortOrder}
+                            invertSort={invertSort}
+                            bottomOutForce={adjustRange(bottomOutForce)}
+                            bottomOutDistance={adjustRange(bottomOutDistance, 5)}
+                            tactilePeakForce={adjustRange(peakForce)}
                         />
                     </Form.Item>
 
-                    <Flex gap="large" justify="space-between" className="row">
+                    <div className="row">
                         <Form.Item name="switchTypes" label="Feel">
-                            <Segmented options={feelOptions} size="large" />
+                            <Segmented options={feelOptions} />
                         </Form.Item>
+                        <Form.Item name="sortOrder" label="Sort">
+                            <Segmented options={sortOptions} />
+                        </Form.Item>
+                        <Form.Item name="invertSort" label="Order">
+                            <Segmented options={sortOrderOptions} />
+                        </Form.Item>
+                    </div>
+                    <div className="row slider-row">
                         <Form.Item
                             name="peakForce"
-                            label="Tactile operating force"
+                            label="Tactile peak force (g)"
                             className="slider"
                         >
-                            <Slider range min={0} max={100} step={5} marks={marks} />
+                            <Slider range min={0} max={100} step={5} marks={forceMarks} />
                         </Form.Item>
                         <Form.Item
                             name="bottomOutForce"
-                            label="Bottom out force"
+                            label="Bottom out force (g)"
                             className="slider"
                         >
-                            <Slider range min={0} max={100} step={5} marks={marks} />
+                            <Slider range min={0} max={100} step={5} marks={forceMarks} />
                         </Form.Item>
-                    </Flex>
+                        <Form.Item
+                            name="bottomOutDistance"
+                            label="Total travel (mm)"
+                            className="slider"
+                        >
+                            <Slider range min={0} max={5} step={0.1} marks={distanceMarks} />
+                        </Form.Item>
+                    </div>
                 </Form>
             </div>
 
@@ -242,15 +325,15 @@ function fetchForceCurves(curves: CurveFile[]) {
 interface ForceCurveChartWrapperProps {
     getCurvesPromise: Promise<ForceCurve[]>;
     displayMode: DisplayMode;
-    markPoints: boolean;
+    marks: ForceCurveChartMarks;
 }
 
 const ForceCurveChartWrapper: React.FC<ForceCurveChartWrapperProps> = ({
     getCurvesPromise,
     displayMode,
-    markPoints,
+    marks,
 }) => {
     const data = use(getCurvesPromise);
 
-    return <ForceCurveChart data={data} display={displayMode} markPoints={markPoints} />;
+    return <ForceCurveChart data={data} display={displayMode} marks={marks} />;
 };

@@ -13,17 +13,21 @@
     text-align: center;
 }
 
-.slider {
-    width: 33%;
+.row {
+    display: flex;
+    flex-flow: row wrap;
+    column-gap: 24px;
 }
 
-@media (max-width: 800px) {
-    .row {
-        flex-direction: column;
-        row-gap: 0;
-    }
+.slider-row {
+    column-gap: 48px;
+}
 
-    .slider {
-        width: 100%;
-    }
+.slider {
+    min-width: 220px;
+    flex: 1;
+}
+
+.align-end {
+    margin-inline-start: auto;
 }
