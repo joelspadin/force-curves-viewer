@@ -100,7 +100,7 @@ export function forceCurveMetadataPlugin(): Plugin {
                     | undefined;
 
                 if (curveMetadata) {
-                    const key = path.relative(forceCurvesPath, moduleId).replace(path.sep, '/');
+                    const key = path.relative(forceCurvesPath, moduleId).replaceAll(path.sep, '/');
                     metadata[key] = curveMetadata;
                 }
             }
