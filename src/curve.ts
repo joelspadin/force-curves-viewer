@@ -34,7 +34,8 @@ interface ForceCurveModule {
 
 const forceCurves = import.meta.glob<ForceCurveModule>([
     '../force-curves/**/*.csv',
-    '!**/*HighResolutionRaw.csv',
+    '!**/*HighResolution*.csv',
+    '!**/*HighResoultion*.csv',
 ]);
 
 export function getForceCurves(): CurveFile[] {

@@ -28,7 +28,11 @@ interface ForceCurve {
 const forceCurvesPath = path.resolve(__dirname, 'force-curves');
 
 function isRawDataCsv(id: string) {
-    return path.extname(id) === '.csv' && !id.includes('HighResolutionRaw.csv');
+    return (
+        path.extname(id) === '.csv' &&
+        !id.includes('HighResolution') &&
+        !id.includes('HighResoultion')
+    );
 }
 
 /**
