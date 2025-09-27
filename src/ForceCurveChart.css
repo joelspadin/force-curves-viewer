@@ -12,7 +12,14 @@
     align-items: center;
 }
 
+.chart-container .wrap {
+    position: relative;
+    display: flex;
+}
+
 .chart-container .chart {
+    width: 800px;
+    height: 450px;
     flex-shrink: 0;
     flex-grow: 0;
 }
@@ -24,6 +31,12 @@
 
     display: flex;
     flex-flow: column wrap;
+}
+
+.legend.inside {
+    position: absolute;
+    left: 80px;
+    top: 24px;
 }
 
 .legend .swatch {
@@ -47,13 +60,12 @@
 }
 
 @media (max-width: 1200px) {
-    .chart-container {
-        min-height: 480px;
+    .chart-container .wrap {
         flex-direction: column;
         align-items: center;
     }
 
-    .chart-container .legend {
+    .chart-container .legend:not(.inside) {
         max-width: 800px;
         min-height: 24px;
         margin-top: 6px;

@@ -37,6 +37,8 @@ export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display,
     const chartRef = useRef<HTMLDivElement>(null);
     const [legend, setLegend] = useState<LegendEntry[]>([]);
 
+    const legendInside = legend.length <= 4 && display != 'separate';
+
     useEffect(() => {
         const chart = getChart(data ?? [], display, markPoints);
         setLegend(getLegendEntries(chart));
@@ -50,15 +52,18 @@ export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display,
 
     return (
         <figure className="chart-container" style={{ color: token.colorText }}>
-            <div className="chart" ref={chartRef}></div>
-            <div className="legend">
-                {legend.map((item) => (
-                    <div key={item.name} className="swatch">
-                        <SwatchColor color={item.downColor} title="Downstroke" />
-                        <SwatchColor color={item.upColor} title="Upstroke" />
-                        <div className="swatch-label">{item.name}</div>
-                    </div>
-                ))}
+            <div className="wrap">
+                <div className="chart" ref={chartRef}></div>
+
+                <div className={`legend ${legendInside ? 'inside' : ''}`}>
+                    {legend.map((item) => (
+                        <div key={item.name} className="swatch">
+                            <SwatchColor color={item.downColor} title="Downstroke" />
+                            <SwatchColor color={item.upColor} title="Upstroke" />
+                            <div className="swatch-label">{item.name}</div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </figure>
     );
@@ -70,18 +75,12 @@ interface SwatchColorProps {
 }
 
 const SwatchColor: React.FC<SwatchColorProps> = ({ color, title }) => {
-    return (
-        color && (
-            <div className="swatch-color" title={title} style={{ backgroundColor: color }}></div>
-        )
-    );
-};
+    if (!color) {
+        return null;
+    }
 
-const FONT_FAMILY = `
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'
-    `;
+    return <div className="swatch-color" title={title} style={{ backgroundColor: color }}></div>;
+};
 
 function getChart(
     curves: ForceCurve[],
@@ -198,7 +197,6 @@ function getChart(
         },
         style: {
             fontSize: '1rem',
-            fontFamily: FONT_FAMILY,
         },
     });
 
