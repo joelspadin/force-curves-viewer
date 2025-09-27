@@ -1,6 +1,7 @@
 import 'core-js/actual/array/find-last-index.js';
-import { blur, groups, maxIndex, mean, minIndex, pairs } from 'd3-array';
+import { blur, groups, maxIndex, mean, minIndex, pairs, range } from 'd3-array';
 import { csvParse } from 'd3-dsv';
+import { interpolateNumber } from 'd3-interpolate';
 import path from 'path';
 import { Plugin } from 'rollup';
 import simplify from 'simplify-js';
@@ -45,7 +46,9 @@ export function forceCurvePlugin(): Plugin {
             const csv = await this.fs.readFile(id, { encoding: 'utf8' });
 
             const rows = parseCsv(csv);
-            const [downstroke, upstroke] = partitionStrokes(rows).map(simplifyPoints);
+            const [downstroke, upstroke] = partitionStrokes(rows).map((p) =>
+                dedupePoints(simplifyPoints(p)),
+            );
 
             const curve: ForceCurve = { downstroke, upstroke };
             const metadata = getMetadata(downstroke);
@@ -119,15 +122,21 @@ function parseCsv(code: string): Point[] {
 }
 
 /**
- * Simplify values with the same displacement to just the first and last point
- * in each group.
+ * Simplify the curve to reduce its size.
  */
-function simplifyPoints(points: Point[]): Point[] {
+function simplifyPoints(points: Point[], tolerance = 0.01): Point[] {
     const xy = points.map((p) => ({ x: p[0], y: p[1] }));
 
-    const simplified = simplify(xy, 0.01);
+    const simplified = simplify(xy, tolerance, true);
 
     return simplified.map((p) => [p.x, p.y]);
+}
+
+/**
+ * Merges points with the same displacement
+ */
+function dedupePoints(points: Point[]): Point[] {
+    return groups(points, (p) => p[0]).map(([x, group]) => [x, mean(group.map((p) => p[1])) ?? 0]);
 }
 
 /**
@@ -144,15 +153,39 @@ function partitionStrokes(points: Point[]): [Point[], Point[]] {
 function getDerivative(points: Point[]): Point[] {
     points = groups(points, (p) => p[0]).map(([x, group]) => [x, mean(group, (p) => p[1]) ?? 0]);
 
-    const result = pairs(points, (a, b) => b[1] - a[1]);
-    blur(result, 7);
+    const result = pairs(points, (a, b) => (b[1] - a[1]) / (b[0] / a[0]));
+    blur(result, 0.1);
 
     return points.map((p, i) => [p[0], result[i]]);
 }
 
+function quantize(points: Point[], step = 0.02): Point[] {
+    if (points.length < 2) {
+        return points;
+    }
+
+    const start = points.at(0)?.[0] ?? 0;
+    const stop = points.at(-1)?.[0] ?? 0;
+
+    const result: Point[] = [];
+    let i = 0;
+
+    for (const x of range(start, stop + step / 2, step)) {
+        while (i < points.length - 2 && x > points[i + 1][0]) {
+            i++;
+        }
+
+        const t = (x - points[i][0]) / (points[i + 1][0] - points[i][0]);
+        const force = interpolateNumber(points[i][1], points[i + 1][1])(t);
+
+        result.push([x, force]);
+    }
+
+    return result;
+}
+
 function findLocalMaxima(points: Point[]) {
     let forces = points.map((p) => p[1]);
-    blur(forces, 7);
 
     let max: Point | undefined = undefined;
     let maxima: Point[] = [];
@@ -171,7 +204,6 @@ function findLocalMaxima(points: Point[]) {
 
 function findLocalMinima(points: Point[]) {
     let forces = points.map((p) => p[1]);
-    blur(forces, 7);
 
     let min: Point | undefined = undefined;
     let minima: Point[] = [];
@@ -188,24 +220,18 @@ function findLocalMinima(points: Point[]) {
     return minima;
 }
 
-function findBottomOutDisplacement(derivative2: Point[]) {
-    for (let i = derivative2.length - 2; i >= 0; i--) {
-        if (derivative2[i][1] < derivative2[i + 1][1]) {
-            return derivative2[i][0];
-        }
-    }
-
-    return derivative2.at(-1)?.[0]!;
-}
-
 const MAX_TACTILE_DISPLACEMENT = 3;
 const ZERO: Point = [0, 0];
 
 function getMetadata(downstroke: Point[]): ForceCurveMetadata {
-    const velocity = getDerivative(downstroke);
-    const accel = getDerivative(velocity);
+    // Further simplify to get more stable derivatives
+    const simplified = quantize(simplifyPoints(downstroke, 0.1), 0.01);
 
-    const bottomOutDisplacement = findBottomOutDisplacement(accel);
+    // Bottom out point is where the force accelerates the most at the end of travel.
+    const velocity = getDerivative(simplified);
+    const accel = simplifyPoints(getDerivative(velocity), 0.1);
+
+    const bottomOutDisplacement = findLocalMaxima(accel).at(-1)?.[0] ?? 0;
     const bottomOut = downstroke.find((p) => p[0] >= bottomOutDisplacement) ?? ZERO;
 
     // Determine the max tactile point to be the largest local maximum before

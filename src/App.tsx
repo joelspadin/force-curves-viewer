@@ -1,4 +1,4 @@
-import { ConfigProvider, Divider, Flex, Form, Segmented, Slider, theme } from 'antd';
+import { ConfigProvider, Divider, Flex, Form, Segmented, Slider, Switch, theme } from 'antd';
 import { App as AntApp } from 'antd/lib';
 import { useForm } from 'antd/lib/form/Form';
 import { SliderMarks } from 'antd/lib/slider';
@@ -25,6 +25,7 @@ const { useToken } = theme;
 
 interface FormValues {
     displayMode: DisplayMode;
+    markPoints: boolean;
     switchTypes: SwitchTypeFilter;
     darkTheme: boolean;
     bottomOutForce: [number, number];
@@ -94,6 +95,7 @@ function MainLayout() {
         'forceCurve.displayMode',
         'combined',
     );
+    const [markPoints, setMarkPoints] = useLocalStorage<boolean>('forceCurve.markPoints', true);
     const [switchTypes, setSwitchTypes] = useLocalStorage<SwitchTypeFilter>(
         'forceCurve.switchFeel',
         'all',
@@ -114,6 +116,7 @@ function MainLayout() {
     const onValuesChanged = useCallback(
         (values: Partial<FormValues>) => {
             values.displayMode && setDisplayMode(values.displayMode);
+            values.markPoints !== undefined && setMarkPoints(values.markPoints);
             values.darkTheme !== undefined && setDarkTheme(values.darkTheme);
             values.switchTypes && setSwitchTypes(values.switchTypes);
             values.bottomOutForce && setBottomOutForce(values.bottomOutForce);
@@ -134,6 +137,7 @@ function MainLayout() {
                 <ForceCurveChartWrapper
                     getCurvesPromise={getCurvesPromise}
                     displayMode={displayMode}
+                    markPoints={markPoints}
                 />
             </Suspense>
             <div className="options">
@@ -141,6 +145,7 @@ function MainLayout() {
                     form={form}
                     initialValues={{
                         displayMode,
+                        markPoints,
                         darkTheme,
                         switchTypes,
                         bottomOutForce,
@@ -152,6 +157,9 @@ function MainLayout() {
                     <Flex gap="large" justify="space-between" className="row">
                         <Form.Item name="displayMode" label="Graph type">
                             <Segmented options={displayModeOptions} size="large" />
+                        </Form.Item>
+                        <Form.Item name="markPoints" label="Mark key points">
+                            <Switch />
                         </Form.Item>
                         <Form.Item name="darkTheme" label="Theme">
                             <Segmented options={themeOptions} size="large" shape="round" />
@@ -234,13 +242,15 @@ function fetchForceCurves(curves: CurveFile[]) {
 interface ForceCurveChartWrapperProps {
     getCurvesPromise: Promise<ForceCurve[]>;
     displayMode: DisplayMode;
+    markPoints: boolean;
 }
 
 const ForceCurveChartWrapper: React.FC<ForceCurveChartWrapperProps> = ({
     getCurvesPromise,
     displayMode,
+    markPoints,
 }) => {
     const data = use(getCurvesPromise);
 
-    return <ForceCurveChart data={data} display={displayMode} />;
+    return <ForceCurveChart data={data} display={displayMode} markPoints={markPoints} />;
 };
