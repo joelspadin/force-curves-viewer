@@ -1,7 +1,6 @@
 .chart-container {
-    min-height: 460px;
-    margin-top: 0;
-    margin-bottom: 1rem;
+    min-height: 450px;
+    margin: 0 0 1rem;
 
     display: flex;
     flex-direction: row;
@@ -22,10 +21,43 @@
     min-width: 200px;
     overflow: visible;
     text-overflow: unset;
+
+    display: flex;
+    flex-flow: column wrap;
 }
 
-@media (max-width: 1000px) {
+.legend .swatch {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    break-inside: avoid;
+    unicode-bidi: isolate;
+
+    line-height: 24px;
+}
+
+.swatch-color {
+    width: 16px;
+    height: 16px;
+}
+
+.swatch-label {
+    margin-inline-start: 8px;
+}
+
+@media (max-width: 1200px) {
     .chart-container {
+        min-height: 480px;
         flex-direction: column;
+        align-items: center;
+    }
+
+    .chart-container .legend {
+        max-width: 800px;
+        min-height: 24px;
+        margin-top: 6px;
+        flex-direction: row;
+        column-gap: 24px;
     }
 }

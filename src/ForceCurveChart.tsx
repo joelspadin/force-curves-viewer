@@ -1,6 +1,6 @@
 import * as Plot from '@observablehq/plot';
 import { Spin, theme } from 'antd';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ForceCurve, TaggedPoint } from './curve';
 
 import './ForceCurveChart.css';
@@ -8,7 +8,6 @@ import './ForceCurveChart.css';
 const { useToken } = theme;
 
 type ChartType = ReturnType<typeof Plot.plot>;
-type LegendType = ReturnType<ChartType['legend']>;
 
 export type DisplayMode = 'combined' | 'separate' | 'down' | 'up';
 
@@ -26,30 +25,55 @@ export const ForceCurveChartPlaceholder: React.FC = () => {
     );
 };
 
+interface LegendEntry {
+    name: string;
+    downColor?: string;
+    upColor?: string;
+}
+
 export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display, markPoints }) => {
     const { token } = useToken();
 
     const chartRef = useRef<HTMLDivElement>(null);
-    const legendRef = useRef<HTMLDivElement>(null);
+    const [legend, setLegend] = useState<LegendEntry[]>([]);
 
     useEffect(() => {
-        const [chart, legend] = getChart(data ?? [], display, markPoints);
+        const chart = getChart(data ?? [], display, markPoints);
+        setLegend(getLegendEntries(chart));
+
         chartRef.current?.append(chart);
-        if (legend) {
-            legendRef.current?.append(legend);
-        }
 
         return () => {
             chart.remove();
-            legend?.remove();
         };
-    }, [data, display, markPoints, getChart]);
+    }, [data, display, markPoints, getChart, setLegend]);
 
     return (
         <figure className="chart-container" style={{ color: token.colorText }}>
             <div className="chart" ref={chartRef}></div>
-            <div className="legend" ref={legendRef}></div>
+            <div className="legend">
+                {legend.map((item) => (
+                    <div key={item.name} className="swatch">
+                        <SwatchColor color={item.downColor} title="Downstroke" />
+                        <SwatchColor color={item.upColor} title="Upstroke" />
+                        <div className="swatch-label">{item.name}</div>
+                    </div>
+                ))}
+            </div>
         </figure>
+    );
+};
+
+interface SwatchColorProps {
+    color: string | undefined;
+    title: string;
+}
+
+const SwatchColor: React.FC<SwatchColorProps> = ({ color, title }) => {
+    return (
+        color && (
+            <div className="swatch-color" title={title} style={{ backgroundColor: color }}></div>
+        )
     );
 };
 
@@ -63,7 +87,7 @@ function getChart(
     curves: ForceCurve[],
     display: DisplayMode = 'combined',
     markPoints: boolean = false,
-): [ChartType, LegendType] {
+): ChartType {
     const data = curves.flatMap((c) => c.points);
     const bottom = curves.flatMap((c) => c.bottomOut);
     const peak = curves.filter((c) => c.isTactile).flatMap((c) => c.tactileMax);
@@ -150,6 +174,7 @@ function getChart(
             label: 'Displacement (mm)',
             labelAnchor: 'center',
             labelOffset: 50,
+            grid: true,
         },
         y: {
             label: 'Force (gf)',
@@ -177,16 +202,7 @@ function getChart(
         },
     });
 
-    const legend = chart.legend('color', {
-        swatchSize: 14,
-        columns: '1',
-        style: {
-            fontSize: '0.875rem',
-            fontFamily: FONT_FAMILY,
-        },
-    });
-
-    return [chart, legend];
+    return chart;
 }
 
 function strokeName(point: TaggedPoint) {
@@ -195,4 +211,35 @@ function strokeName(point: TaggedPoint) {
 
 function setOpacity(color: string, opacity: number) {
     return color.replace(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/, `rgba($1, $2, $3, ${opacity})`);
+}
+
+function getLegendEntries(chart: ChartType) {
+    const scale = chart.scale('color');
+
+    const entries: Record<string, LegendEntry> = {};
+
+    for (const domain of scale?.domain! as Iterable<string>) {
+        const color = scale?.apply(domain) as string;
+
+        console.log(domain, color);
+
+        const m = domain.match(/^(.+) \((Up|Down)\)$/);
+        if (m) {
+            const name = m[1]!;
+            const stroke = m[2]!;
+
+            const colorField: Partial<LegendEntry> =
+                stroke === 'Up' ? { upColor: color } : { downColor: color };
+
+            entries[name] = {
+                name,
+                ...entries[name],
+                ...colorField,
+            };
+
+            console.log(entries[name]);
+        }
+    }
+
+    return Object.values(entries);
 }
