@@ -1,6 +1,6 @@
 import * as Plot from '@observablehq/plot';
 import { Spin, theme } from 'antd';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ForceCurve, TaggedPoint } from './curve';
 
 import './ForceCurveChart.css';
@@ -12,7 +12,7 @@ type ChartType = ReturnType<typeof Plot.plot>;
 export type DisplayMode = 'combined' | 'separate' | 'down' | 'up';
 
 export interface ForceCurveChartProps {
-    data?: ForceCurve[];
+    data: ForceCurve[];
     display?: DisplayMode;
     markPoints?: boolean;
 }
@@ -35,20 +35,18 @@ export const ForceCurveChart: React.FC<ForceCurveChartProps> = ({ data, display,
     const { token } = useToken();
 
     const chartRef = useRef<HTMLDivElement>(null);
-    const [legend, setLegend] = useState<LegendEntry[]>([]);
+
+    const [chart, legend] = useChart(data, display, markPoints);
 
     const legendInside = legend.length <= 4 && display != 'separate';
 
     useEffect(() => {
-        const chart = getChart(data ?? [], display, markPoints);
-        setLegend(getLegendEntries(chart));
-
         chartRef.current?.append(chart);
 
         return () => {
             chart.remove();
         };
-    }, [data, display, markPoints, getChart, setLegend]);
+    }, [chart]);
 
     return (
         <figure className="chart-container" style={{ color: token.colorText }}>
@@ -82,17 +80,20 @@ const SwatchColor: React.FC<SwatchColorProps> = ({ color, title }) => {
     return <div className="swatch-color" title={title} style={{ backgroundColor: color }}></div>;
 };
 
-function getChart(
+function useChart(
     curves: ForceCurve[],
     display: DisplayMode = 'combined',
     markPoints: boolean = false,
-): ChartType {
+): [ChartType, LegendEntry[]] {
     const data = curves.flatMap((c) => c.points);
     const bottom = curves.flatMap((c) => c.bottomOut);
     const peak = curves.filter((c) => c.isTactile).flatMap((c) => c.tactileMax);
 
     let facet: Plot.PlotFacetOptions | undefined = undefined;
     let filter: Plot.ChannelValue | undefined = undefined;
+    let upStrokeOpacity = 0.35;
+    let showUpStrokeLegend = true;
+    let showDownStrokeLegend = true;
 
     switch (display) {
         case 'separate':
@@ -106,10 +107,13 @@ function getChart(
 
         case 'down':
             filter = (p: TaggedPoint) => !p.upStroke;
+            showUpStrokeLegend = false;
             break;
 
         case 'up':
             filter = (p: TaggedPoint) => p.upStroke;
+            upStrokeOpacity = 1;
+            showDownStrokeLegend = false;
             break;
     }
 
@@ -193,14 +197,16 @@ function getChart(
                 'rgb(227, 26, 28)',
                 'rgb(106, 61, 154)',
                 'rgb(255, 224, 31)',
-            ].flatMap((color) => [color, setOpacity(color, 0.3)]),
+            ].flatMap((color) => [color, setOpacity(color, upStrokeOpacity)]),
         },
         style: {
             fontSize: '1rem',
         },
     });
 
-    return chart;
+    const legend = getLegendEntries(chart, showUpStrokeLegend, showDownStrokeLegend);
+
+    return [chart, legend];
 }
 
 function strokeName(point: TaggedPoint) {
@@ -211,31 +217,31 @@ function setOpacity(color: string, opacity: number) {
     return color.replace(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/, `rgba($1, $2, $3, ${opacity})`);
 }
 
-function getLegendEntries(chart: ChartType) {
-    const scale = chart.scale('color');
-
+function getLegendEntries(chart: ChartType, showUpStroke: boolean, showDownStroke: boolean) {
     const entries: Record<string, LegendEntry> = {};
+    const scale = chart.scale('color');
 
     for (const domain of scale?.domain! as Iterable<string>) {
         const color = scale?.apply(domain) as string;
 
-        console.log(domain, color);
-
         const m = domain.match(/^(.+) \((Up|Down)\)$/);
         if (m) {
             const name = m[1]!;
-            const stroke = m[2]!;
+            const upStroke = m[2]! === 'Up';
 
-            const colorField: Partial<LegendEntry> =
-                stroke === 'Up' ? { upColor: color } : { downColor: color };
+            if ((upStroke && !showUpStroke) || (!upStroke && !showDownStroke)) {
+                continue;
+            }
+
+            const colorField: Partial<LegendEntry> = upStroke
+                ? { upColor: color }
+                : { downColor: color };
 
             entries[name] = {
                 name,
                 ...entries[name],
                 ...colorField,
             };
-
-            console.log(entries[name]);
         }
     }
 
