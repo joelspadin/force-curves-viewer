@@ -214,7 +214,7 @@ function MainLayout() {
                 </p>
                 <p>
                     <a
-                        href="https://github.com/joelspadin/force-curve-viewer"
+                        href="https://github.com/joelspadin/force-curves-viewer"
                         target="_blank"
                         rel="noreferrer"
                     >
