@@ -9,8 +9,6 @@ import toSource from 'tosource';
 
 const HEADER_LINES = 5;
 
-const TACTILE_THRESHOLD = 5;
-
 type Point = [number, number];
 
 interface ForceCurveMetadata {
@@ -224,7 +222,9 @@ function findLocalMinima(points: Point[]) {
     return minima;
 }
 
-const MAX_TACTILE_DISPLACEMENT = 3;
+const TACTILE_FORCE_THRESHOLD = 3;
+const TACTILE_DISPLACEMENT_THRESHOLD = 0.3;
+
 const ZERO: Point = [0, 0];
 
 function getMetadata(downstroke: Point[]): ForceCurveMetadata {
@@ -238,18 +238,28 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
     const bottomOutDisplacement = findLocalMaxima(accel).at(-1)?.[0] ?? 0;
     const bottomOut = downstroke.find((p) => p[0] >= bottomOutDisplacement) ?? ZERO;
 
-    // Determine the max tactile point to be the largest local maximum before
-    // some arbitrary displacement, so we don't select bumps in the bottom out.
-    const maxima = findLocalMaxima(downstroke).filter((p) => p[0] < MAX_TACTILE_DISPLACEMENT);
-    const tactileMax = maxElement(maxima, (p) => p[1]) ?? ZERO;
+    // Determine the min and max tactile points to be the two points with the
+    // largest difference in force prior to the bottom out.
+    const maxima = findLocalMaxima(downstroke).filter((p) => p[0] < bottomOutDisplacement);
+    const minima = findLocalMinima(downstroke);
 
-    // Determine the min tactile point to be the smallest local minimum that
-    // occurs after the max point.
-    const minima = findLocalMinima(downstroke).filter((p) => p[0] > (tactileMax?.[0] ?? 0));
-    const tactileMin = minElement(minima, (p) => p[1]) ?? ZERO;
+    const maximaMinimaPairs = maxima.map((max) => {
+        const minimaAfter = minima.filter((p) => p[0] > max[0]);
+        const largestDifference = maxElement(minimaAfter, (p) => max[1] - p[1]);
 
-    // The switch is tactile if the force decreases at some point during the downstroke.
-    const isTactile = tactileMax[1] - tactileMin[1] > TACTILE_THRESHOLD;
+        return [max, largestDifference] as [Point, Point];
+    });
+
+    const [tactileMax, tactileMin] = maxElement(
+        maximaMinimaPairs,
+        (pair) => pair[0][1] - pair[1][1],
+    ) ?? [ZERO, ZERO];
+
+    // The switch is tactile if the force decreases over a long enough displacement
+    // during the downstroke.
+    const isTactile =
+        tactileMin[0] - tactileMax[0] > TACTILE_DISPLACEMENT_THRESHOLD &&
+        tactileMax[1] - tactileMin[1] > TACTILE_FORCE_THRESHOLD;
 
     return {
         bottomOut,
