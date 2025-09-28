@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && cross-env NODE_OPTIONS='--max-old-space-size=4096' vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "prettier:check": "prettier --check .",
+    "prettier:format": "prettier --write ."
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.2",
