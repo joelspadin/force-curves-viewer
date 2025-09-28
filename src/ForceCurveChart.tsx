@@ -93,6 +93,8 @@ function useChart(
     display: DisplayMode = 'combined',
     marks?: ForceCurveChartMarks,
 ): [ChartType, LegendEntry[]] {
+    const { token } = useToken();
+
     const data = curves.flatMap((c) => c.points);
     const bottom = curves.flatMap((c) => c.bottomOut);
     const peak = curves.filter((c) => c.isTactile).flatMap((c) => c.tactileMax);
@@ -104,7 +106,7 @@ function useChart(
 
     let facet: Plot.PlotFacetOptions | undefined = undefined;
     let filter: Plot.ChannelValue | undefined = undefined;
-    let upStrokeOpacity = 0.35;
+    let upStrokeFade = 55;
     let showUpStrokeLegend = true;
     let showDownStrokeLegend = true;
 
@@ -125,7 +127,7 @@ function useChart(
 
         case 'up':
             filter = (p: TaggedPoint) => p.upStroke;
-            upStrokeOpacity = 1;
+            upStrokeFade = 0;
             showDownStrokeLegend = false;
             break;
     }
@@ -230,7 +232,7 @@ function useChart(
                 'rgb(227, 26, 28)',
                 'rgb(106, 61, 154)',
                 'rgb(255, 224, 31)',
-            ].flatMap((color) => [color, setOpacity(color, upStrokeOpacity)]),
+            ].flatMap((color) => [color, fadeColor(color, token.colorBgContainer, upStrokeFade)]),
         },
         style: {
             fontSize: '1rem',
@@ -246,8 +248,12 @@ function strokeName(point: TaggedPoint) {
     return point.upStroke ? 'Up' : 'Down';
 }
 
-function setOpacity(color: string, opacity: number) {
-    return color.replace(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/, `rgba($1, $2, $3, ${opacity})`);
+function fadeColor(color1: string, color2: string, percent: number) {
+    if (percent === 0) {
+        return color1;
+    }
+
+    return `color-mix(in srgb, ${color1}, ${color2} ${percent}%)`;
 }
 
 function getLegendEntries(chart: ChartType, showUpStroke: boolean, showDownStroke: boolean) {
