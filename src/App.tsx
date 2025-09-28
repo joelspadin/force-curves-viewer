@@ -11,16 +11,7 @@ import {
 import { App as AntApp } from 'antd/lib';
 import { useForm } from 'antd/lib/form/Form';
 import { SliderMarks } from 'antd/lib/slider';
-import {
-    createContext,
-    Dispatch,
-    SetStateAction,
-    Suspense,
-    use,
-    useCallback,
-    useEffect,
-    useState,
-} from 'react';
+import { createContext, Dispatch, SetStateAction, Suspense, use, useEffect, useState } from 'react';
 import { CurveFile, ForceCurve, loadForceCurve } from './curve';
 import {
     DisplayMode,
@@ -168,20 +159,17 @@ function MainLayout() {
     const [curves, setCurves] = useState<CurveFile[]>([]);
     const getCurvesPromise = fetchForceCurves(curves);
 
-    const onValuesChanged = useCallback(
-        (values: Partial<FormValues>) => {
-            values.displayMode && setDisplayMode(values.displayMode);
-            values.marks && setMarks(values.marks);
-            values.darkTheme !== undefined && setDarkTheme(values.darkTheme);
-            values.switchTypes && setSwitchTypes(values.switchTypes);
-            values.sortOrder && setSortOrder(values.sortOrder);
-            values.invertSort !== undefined && setInvertSort(values.invertSort);
-            values.bottomOutForce && setBottomOutForce(values.bottomOutForce);
-            values.bottomOutDistance && setBottomOutDistance(values.bottomOutDistance);
-            values.peakForce && setPeakForce(values.peakForce);
-        },
-        [setDisplayMode],
-    );
+    const handleValuesChanged = useFormValueHandler({
+        displayMode: setDisplayMode,
+        marks: setMarks,
+        darkTheme: setDarkTheme,
+        switchTypes: setSwitchTypes,
+        sortOrder: setSortOrder,
+        invertSort: setInvertSort,
+        bottomOutForce: setBottomOutForce,
+        bottomOutDistance: setBottomOutDistance,
+        peakForce: setPeakForce,
+    });
 
     const { token } = useToken();
 
@@ -216,7 +204,7 @@ function MainLayout() {
                         bottomOutDistance,
                         peakForce,
                     }}
-                    onValuesChange={onValuesChanged}
+                    onValuesChange={handleValuesChanged}
                     layout="vertical"
                 >
                     <div className="row">
@@ -337,3 +325,18 @@ const ForceCurveChartWrapper: React.FC<ForceCurveChartWrapperProps> = ({
 
     return <ForceCurveChart data={data} display={displayMode} marks={marks} />;
 };
+
+type FormValueHandlers = {
+    [K in keyof FormValues]: Dispatch<SetStateAction<FormValues[K]>>;
+};
+
+function useFormValueHandler(handlers: FormValueHandlers) {
+    return (values: Partial<FormValues>) => {
+        for (const [key, value] of Object.entries(values)) {
+            if (value !== undefined) {
+                // @ts-expect-error No way to properly type "value" here
+                handlers[key as keyof FormValues](value);
+            }
+        }
+    };
+}

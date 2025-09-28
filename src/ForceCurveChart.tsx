@@ -254,7 +254,11 @@ function getLegendEntries(chart: ChartType, showUpStroke: boolean, showDownStrok
     const entries: Record<string, LegendEntry> = {};
     const scale = chart.scale('color');
 
-    for (const domain of scale?.domain! as Iterable<string>) {
+    if (!scale) {
+        throw new Error('Chart has no scale');
+    }
+
+    for (const domain of scale.domain! as Iterable<string>) {
         const color = scale?.apply(domain) as string;
 
         const m = domain.match(/^(.+) \((Up|Down)\)$/);

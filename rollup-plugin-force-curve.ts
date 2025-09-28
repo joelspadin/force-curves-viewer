@@ -1,5 +1,5 @@
 import 'core-js/actual/array/find-last-index.js';
-import { blur, groups, maxIndex, mean, minIndex, pairs, range } from 'd3-array';
+import { blur, groups, maxIndex, mean, pairs, range } from 'd3-array';
 import { csvParse } from 'd3-dsv';
 import { interpolateNumber } from 'd3-interpolate';
 import path from 'path';
@@ -187,10 +187,10 @@ function quantize(points: Point[], step = 0.02): Point[] {
 }
 
 function findLocalMaxima(points: Point[]) {
-    let forces = points.map((p) => p[1]);
+    const forces = points.map((p) => p[1]);
 
     let max: Point | undefined = undefined;
-    let maxima: Point[] = [];
+    const maxima: Point[] = [];
 
     for (let i = 0; i < forces.length - 1; i++) {
         if (forces[i + 1] > forces[i]) {
@@ -205,10 +205,10 @@ function findLocalMaxima(points: Point[]) {
 }
 
 function findLocalMinima(points: Point[]) {
-    let forces = points.map((p) => p[1]);
+    const forces = points.map((p) => p[1]);
 
     let min: Point | undefined = undefined;
-    let minima: Point[] = [];
+    const minima: Point[] = [];
 
     for (let i = 0; i < forces.length - 1; i++) {
         if (forces[i + 1] < forces[i] && forces[i + 1]) {
@@ -267,10 +267,6 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
         tactileMin,
         isTactile,
     };
-}
-
-function minElement<T>(data: T[], accessor: (datum: T) => number) {
-    return data.at(minIndex(data, accessor));
 }
 
 function maxElement<T>(data: T[], accessor: (datum: T) => number) {
