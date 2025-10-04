@@ -11,8 +11,8 @@ import {
 import { App as AntApp } from 'antd/lib';
 import { useForm } from 'antd/lib/form/Form';
 import { SliderMarks } from 'antd/lib/slider';
-import { createContext, Dispatch, SetStateAction, Suspense, use, useEffect, useState } from 'react';
-import { CurveFile, ForceCurve, loadForceCurve } from './curve';
+import { createContext, Dispatch, SetStateAction, Suspense, use, useEffect } from 'react';
+import { ForceCurve, getForceCurves, loadForceCurve } from './curve';
 import {
     DisplayMode,
     ForceCurveChart,
@@ -23,8 +23,9 @@ import { ForceCurveSelect, SortOrder, SwitchTypeFilter } from './ForceCurveSelec
 
 import { GithubFilled, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { SegmentedOptions } from 'antd/es/segmented';
+import { Route, Routes, useNavigate, useParams } from 'react-router';
 import './App.css';
-import { useLocalStorage } from './util';
+import { isDefined, useLocalStorage } from './util';
 
 const { useToken } = theme;
 
@@ -118,7 +119,9 @@ function App() {
             }}
         >
             <DarkThemeContext value={[darkTheme, setDarkTheme]}>
-                <MainLayout />
+                <Routes>
+                    <Route path=":files?" element={<MainLayout />} />
+                </Routes>
             </DarkThemeContext>
         </ConfigProvider>
     );
@@ -156,7 +159,7 @@ function MainLayout() {
     );
 
     const [darkTheme, setDarkTheme] = use(DarkThemeContext);
-    const [curves, setCurves] = useState<CurveFile[]>([]);
+    const [curves, setCurves] = useUrlCurves();
     const getCurvesPromise = fetchForceCurves(curves);
 
     const handleValuesChanged = useFormValueHandler({
@@ -297,14 +300,20 @@ function MainLayout() {
     );
 }
 
-// React's cache() keeps re-evaluating this for some reason, so I'll do it myself.
 let forceCurvePromise: Promise<ForceCurve[]> | undefined;
-let cachedCurves: CurveFile[] | undefined;
+let cachedCurves: string[] | undefined;
 
-function fetchForceCurves(curves: CurveFile[]) {
-    if (!forceCurvePromise || curves !== cachedCurves) {
-        forceCurvePromise = Promise.all(curves.map(loadForceCurve));
-        cachedCurves = curves;
+function fetchForceCurves(paths: string[]) {
+    const curves = getForceCurves();
+
+    if (!forceCurvePromise || paths !== cachedCurves) {
+        forceCurvePromise = Promise.all(
+            paths
+                .map((p) => curves[p])
+                .filter(isDefined)
+                .map(loadForceCurve),
+        );
+        cachedCurves = paths;
     }
 
     return forceCurvePromise;
@@ -339,4 +348,17 @@ function useFormValueHandler(handlers: FormValueHandlers) {
             }
         }
     };
+}
+
+function useUrlCurves(): [string[], Dispatch<string[]>] {
+    const { files } = useParams();
+    const navigate = useNavigate();
+
+    const curves = files ? files.split(',').map((s) => s.trim()) : [];
+
+    const setCurves = (curves: string[]) => {
+        navigate('/' + curves.join(','));
+    };
+
+    return [curves, setCurves];
 }

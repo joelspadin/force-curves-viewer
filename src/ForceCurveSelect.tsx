@@ -3,11 +3,10 @@ import fuzzysort from 'fuzzysort';
 import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
 import React, { Dispatch, useState } from 'react';
 import { CurveFile, ForceCurveMetadata, getForceCurves } from './curve';
-import { isDefined } from './util';
 
 import './ForceCurveSelect.css';
 
-const curves = getForceCurves();
+const curves = Object.values(getForceCurves());
 
 interface CurveOption extends DefaultOptionType {
     score: number;
@@ -32,8 +31,8 @@ export interface SwitchSortProps {
 }
 
 export interface ForceCurveSelectProps extends SwitchFilterProps, SwitchSortProps {
-    value?: CurveFile[];
-    onChange?: Dispatch<CurveFile[]>;
+    value?: string[];
+    onChange?: Dispatch<string[]>;
 }
 
 export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
@@ -50,25 +49,18 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
     const results: CurveOption[] = search
         ? fuzzysort.go(search, filtered, { key: 'name' }).map((result) => ({
               score: result.score,
-              value: result.obj.path,
+              value: result.obj.key,
               name: result.obj.name,
               meta: result.obj.metadata,
               label: <OptionLabel option={result.obj} result={result} />,
           }))
         : filtered.map((obj) => ({
               score: 0,
-              value: obj.path,
+              value: obj.key,
               name: obj.name,
               meta: obj.metadata,
               label: <OptionLabel option={obj} />,
           }));
-
-    const handleChange = (paths: string[]) => {
-        const selected = paths
-            .map((path) => curves.find((opt) => opt.path === path))
-            .filter(isDefined);
-        onChange?.(selected);
-    };
 
     return (
         <Select
@@ -82,8 +74,8 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
             placeholder="Select switches"
             allowClear
             autoFocus
-            value={value?.map((v) => v.path)}
-            onChange={handleChange}
+            value={value}
+            onChange={onChange}
             onSearch={setSearch}
             onSelect={clearSearch}
             onDeselect={clearSearch}
