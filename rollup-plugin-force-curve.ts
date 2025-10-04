@@ -155,7 +155,7 @@ function partitionStrokes(points: Point[]): [Point[], Point[]] {
 function getDerivative(points: Point[]): Point[] {
     points = groups(points, (p) => p[0]).map(([x, group]) => [x, mean(group, (p) => p[1]) ?? 0]);
 
-    const result = pairs(points, (a, b) => (b[1] - a[1]) / (b[0] / a[0]));
+    const result = pairs(points, (a, b) => (b[1] - a[1]) / (b[0] - a[0]));
     blur(result, 0.1);
 
     return points.map((p, i) => [p[0], result[i]]);
@@ -222,14 +222,13 @@ function findLocalMinima(points: Point[]) {
     return minima;
 }
 
-const TACTILE_FORCE_THRESHOLD = 3;
-const TACTILE_DISPLACEMENT_THRESHOLD = 0.3;
+const TACTILE_MIN_DISTANCE_FROM_BOTTOM_OUT = 0.5;
 
 const ZERO: Point = [0, 0];
 
 function getMetadata(downstroke: Point[]): ForceCurveMetadata {
     // Further simplify to get more stable derivatives
-    const simplified = quantize(simplifyPoints(downstroke, 0.1), 0.01);
+    const simplified = quantize(simplifyPoints(downstroke, 0.2), 0.01);
 
     // Bottom out point is where the force accelerates the most at the end of travel.
     const velocity = getDerivative(simplified);
@@ -240,7 +239,9 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
 
     // Determine the min and max tactile points to be the two points with the
     // largest difference in force prior to the bottom out.
-    const maxima = findLocalMaxima(downstroke).filter((p) => p[0] < bottomOutDisplacement);
+    const maxima = findLocalMaxima(downstroke).filter(
+        (p) => p[0] < bottomOutDisplacement - TACTILE_MIN_DISTANCE_FROM_BOTTOM_OUT,
+    );
     const minima = findLocalMinima(downstroke);
 
     const maximaMinimaPairs = maxima.map((max) => {
@@ -255,11 +256,7 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
         (pair) => pair[0][1] - pair[1][1],
     ) ?? [ZERO, ZERO];
 
-    // The switch is tactile if the force decreases over a long enough displacement
-    // during the downstroke.
-    const isTactile =
-        tactileMin[0] - tactileMax[0] > TACTILE_DISPLACEMENT_THRESHOLD &&
-        tactileMax[1] - tactileMin[1] > TACTILE_FORCE_THRESHOLD;
+    const isTactile = tactileMax[1] - tactileMin[1] >= minTactileForce(bottomOut[1]);
 
     return {
         bottomOut,
@@ -271,4 +268,8 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
 
 function maxElement<T>(data: T[], accessor: (datum: T) => number) {
     return data.at(maxIndex(data, accessor));
+}
+
+function minTactileForce(bottomOutForce: number) {
+    return Math.min(bottomOutForce * 0.2, 5);
 }
