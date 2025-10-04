@@ -93,6 +93,9 @@ function normalizePath(path: string) {
         _: ' ',
         '../force-curves': '',
         'Raw Data CSV.csv': '',
+        'Raw Data.csv': '',
+        'Data CSV.csv': '',
+        '.csv': '',
     };
 
     for (const [text, replacement] of Object.entries(csvReplacements)) {
