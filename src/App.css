@@ -9,10 +9,6 @@
     max-width: 800px;
 }
 
-.site-info {
-    text-align: center;
-}
-
 .row {
     display: flex;
     flex-flow: row wrap;
@@ -30,4 +26,16 @@
 
 .align-end {
     margin-inline-start: auto;
+}
+
+.site-info {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    column-gap: 48px;
+}
+
+.site-info p {
+    margin-top: 8px;
+    margin-bottom: 0;
 }

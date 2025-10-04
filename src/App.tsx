@@ -272,10 +272,10 @@ function MainLayout() {
                         </Form.Item>
                     </div>
                 </Form>
+                <Divider size="small" />
             </div>
 
             <div className="site-info">
-                <Divider />
                 <p>
                     All force curve data{' '}
                     <a
