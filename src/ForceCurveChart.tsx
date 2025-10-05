@@ -97,7 +97,7 @@ function useChart(
 
     const data = curves.flatMap((c) => c.points);
     const bottom = curves.flatMap((c) => c.bottomOut);
-    const peak = curves.filter((c) => c.isTactile).flatMap((c) => c.tactileMax);
+    const peak = curves.flatMap((c) => c.tactileMax);
 
     let maxForce = 120;
     for (const point of [...bottom, ...peak]) {
@@ -184,7 +184,7 @@ function useChart(
         );
     }
     if (marks?.trough) {
-        const trough = curves.filter((c) => c.isTactile).flatMap((c) => c.tactileMin);
+        const trough = curves.flatMap((c) => c.tactileMin);
 
         plotMarks.push(
             Plot.dot(trough, {
