@@ -222,6 +222,7 @@ function findLocalMinima(points: Point[]) {
     return minima;
 }
 
+const TACTILE_MIN_BUMP_SIZE = 0.1;
 const TACTILE_MIN_DISTANCE_FROM_BOTTOM_OUT = 0.5;
 
 const ZERO: Point = [0, 0];
@@ -244,11 +245,11 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
     );
     const minima = findLocalMinima(downstroke);
 
-    const maximaMinimaPairs = maxima.map((max) => {
-        const minimaAfter = minima.filter((p) => p[0] > max[0]);
-        const largestDifference = maxElement(minimaAfter, (p) => max[1] - p[1]);
+    const maximaMinimaPairs = maxima.map<[Point, Point]>((max) => {
+        const minimaAfter = minima.filter((p) => p[0] > max[0] + TACTILE_MIN_BUMP_SIZE);
+        const largestDifference = maxElement(minimaAfter, (p) => max[1] - p[1]) ?? max;
 
-        return [max, largestDifference] as [Point, Point];
+        return [max, largestDifference];
     });
 
     const [tactileMax, tactileMin] = maxElement(
@@ -267,6 +268,10 @@ function getMetadata(downstroke: Point[]): ForceCurveMetadata {
 }
 
 function maxElement<T>(data: T[], accessor: (datum: T) => number) {
+    if (data.length === 0) {
+        return undefined;
+    }
+
     return data.at(maxIndex(data, accessor));
 }
 
