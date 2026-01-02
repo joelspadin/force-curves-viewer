@@ -19,8 +19,8 @@ interface ForceCurveMetadata {
 }
 
 interface ForceCurve {
-    downstroke: Point[];
-    upstroke: Point[];
+    downstroke: number[];
+    upstroke: number[];
 }
 
 const forceCurvesPath = path.resolve(__dirname, 'force-curves');
@@ -52,7 +52,10 @@ export function forceCurvePlugin(): Plugin {
                 dedupePoints(simplifyPoints(p)),
             );
 
-            const curve: ForceCurve = { downstroke, upstroke };
+            const curve: ForceCurve = {
+                downstroke: downstroke.flat(),
+                upstroke: upstroke.flat(),
+            };
             const metadata = getMetadata(downstroke);
 
             return {

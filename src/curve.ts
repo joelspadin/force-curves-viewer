@@ -27,8 +27,8 @@ export interface ForceCurve {
 
 interface ForceCurveModule {
     curve: {
-        downstroke: Point[];
-        upstroke: Point[];
+        downstroke: number[];
+        upstroke: number[];
     };
     metadata: ForceCurveMetadata;
 }
@@ -74,14 +74,21 @@ export async function loadForceCurve(curve: CurveFile): Promise<ForceCurve> {
     return {
         // Place upstroke before downstroke so downstroke renders over upstroke.
         points: [
-            ...upstroke.map((p) => tagPoint(p, name, true)),
-            ...downstroke.map((p) => tagPoint(p, name)),
+            ...unflatten(upstroke).map((p) => tagPoint(p, name, true)),
+            ...unflatten(downstroke).map((p) => tagPoint(p, name)),
         ],
         bottomOut: tagPoint(bottomOut, name),
         tactileMax: tagPoint(tactileMax, name),
         tactileMin: tagPoint(tactileMin, name),
         isTactile,
     };
+}
+
+function unflatten(values: number[]): Point[] {
+    return Array.from(
+        { length: values.length / 2 },
+        (_, i) => values.slice(i * 2, i * 2 + 2) as Point,
+    );
 }
 
 function tagPoint(point: Point, name: string, upStroke = false): TaggedPoint {
