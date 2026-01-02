@@ -3,7 +3,7 @@ import { blur, groups, maxIndex, mean, pairs, range } from 'd3-array';
 import { csvParse } from 'd3-dsv';
 import { interpolateNumber } from 'd3-interpolate';
 import path from 'path';
-import { Plugin } from 'rollup';
+import { Plugin } from 'rolldown';
 import simplify from 'simplify-js';
 import toSource from 'tosource';
 
