@@ -1,4 +1,6 @@
+import { GithubFilled, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import {
+    App as AntApp,
     Checkbox,
     CheckboxOptionType,
     ConfigProvider,
@@ -9,10 +11,11 @@ import {
     Slider,
     theme,
 } from 'antd';
-import { App as AntApp } from 'antd/lib';
-import { useForm } from 'antd/lib/form/Form';
-import { SliderMarks } from 'antd/lib/slider';
+import { useForm } from 'antd/es/form/Form';
+import { SegmentedOptions } from 'antd/es/segmented';
+import { SliderMarks } from 'antd/es/slider';
 import { createContext, Dispatch, SetStateAction, Suspense, use } from 'react';
+import { Route, Routes, useNavigate, useParams } from 'react-router';
 import { ForceCurve, getForceCurves, loadForceCurve } from './curve';
 import {
     DisplayMode,
@@ -21,12 +24,9 @@ import {
     ForceCurveChartPlaceholder,
 } from './ForceCurveChart';
 import { ForceCurveSelect, SortOrder, SwitchTypeFilter } from './ForceCurveSelect';
-
-import { GithubFilled, MoonOutlined, SunOutlined } from '@ant-design/icons';
-import { SegmentedOptions } from 'antd/es/segmented';
-import { Route, Routes, useNavigate, useParams } from 'react-router';
-import './App.css';
 import { isDefined, useLocalStorage } from './util';
+
+import './App.css';
 
 const { useToken } = theme;
 
