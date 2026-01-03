@@ -4,6 +4,7 @@ import {
     ConfigProvider,
     Divider,
     Form,
+    Layout,
     Segmented,
     Slider,
     theme,
@@ -11,7 +12,7 @@ import {
 import { App as AntApp } from 'antd/lib';
 import { useForm } from 'antd/lib/form/Form';
 import { SliderMarks } from 'antd/lib/slider';
-import { createContext, Dispatch, SetStateAction, Suspense, use, useEffect } from 'react';
+import { createContext, Dispatch, SetStateAction, Suspense, use } from 'react';
 import { ForceCurve, getForceCurves, loadForceCurve } from './curve';
 import {
     DisplayMode,
@@ -114,7 +115,7 @@ function App() {
         <ConfigProvider
             theme={{
                 algorithm: darkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
-                cssVar: true,
+                zeroRuntime: true,
                 hashed: false,
             }}
         >
@@ -174,128 +175,133 @@ function MainLayout() {
         peakForce: setPeakForce,
     });
 
-    const { token } = useToken();
-
-    useEffect(() => {
-        document.body.style.backgroundColor = token.colorBgContainer;
-    }, [token]);
+    const {
+        cssVar: { colorBgContainer, colorText },
+    } = useToken();
 
     return (
-        <AntApp style={{ color: token.colorText }}>
-            <Suspense fallback={<ForceCurveChartPlaceholder />}>
-                <ForceCurveChartWrapper
-                    getCurvesPromise={getCurvesPromise}
-                    displayMode={displayMode}
-                    marks={{
-                        peak: marks.includes('peak'),
-                        trough: marks.includes('min'),
-                        bottomOut: marks.includes('bottomOut'),
-                    }}
-                />
-            </Suspense>
-            <div className="options">
-                <Form
-                    form={form}
-                    initialValues={{
-                        displayMode,
-                        marks,
-                        darkTheme,
-                        switchTypes,
-                        sortOrder,
-                        invertSort,
-                        bottomOutForce,
-                        bottomOutDistance,
-                        peakForce,
-                    }}
-                    onValuesChange={handleValuesChanged}
-                    layout="vertical"
-                >
-                    <div className="row">
-                        <Form.Item name="displayMode" label="Chart type">
-                            <Segmented options={displayModeOptions} />
-                        </Form.Item>
-                        <Form.Item name="marks" label="Chart marks">
-                            <Checkbox.Group options={markOptions} />
-                        </Form.Item>
-                        <Form.Item name="darkTheme" label="Theme">
-                            <Segmented options={themeOptions} shape="round" />
-                        </Form.Item>
-                    </div>
-
-                    <Divider orientation="start">Select Switches</Divider>
-
-                    <Form.Item>
-                        <ForceCurveSelect
-                            value={curves}
-                            onChange={setCurves}
-                            switchTypes={switchTypes}
-                            sortOrder={sortOrder}
-                            invertSort={invertSort}
-                            bottomOutForce={adjustRange(bottomOutForce)}
-                            bottomOutDistance={adjustRange(bottomOutDistance, 5)}
-                            tactilePeakForce={adjustRange(peakForce)}
-                        />
-                    </Form.Item>
-
-                    <div className="row">
-                        <Form.Item name="switchTypes" label="Feel">
-                            <Segmented options={feelOptions} />
-                        </Form.Item>
-                        <Form.Item name="sortOrder" label="Sort">
-                            <Segmented options={sortOptions} />
-                        </Form.Item>
-                        <Form.Item name="invertSort" label="Order">
-                            <Segmented options={sortOrderOptions} />
-                        </Form.Item>
-                    </div>
-                    <div className="row slider-row">
-                        <Form.Item
-                            name="peakForce"
-                            label="Tactile peak force (g)"
-                            className="slider"
-                        >
-                            <Slider range min={0} max={100} step={5} marks={forceMarks} />
-                        </Form.Item>
-                        <Form.Item
-                            name="bottomOutForce"
-                            label="Bottom out force (g)"
-                            className="slider"
-                        >
-                            <Slider range min={0} max={100} step={5} marks={forceMarks} />
-                        </Form.Item>
-                        <Form.Item
-                            name="bottomOutDistance"
-                            label="Total travel (mm)"
-                            className="slider"
-                        >
-                            <Slider range min={0} max={5} step={0.1} marks={distanceMarks} />
-                        </Form.Item>
-                    </div>
-                </Form>
-                <Divider size="small" />
-            </div>
-
-            <div className="site-info">
-                <p>
-                    All force curve data{' '}
-                    <a
-                        href="https://github.com/ThereminGoat/force-curves"
-                        target="_blank"
-                        rel="noreferrer"
+        <AntApp>
+            <Layout
+                className="layout"
+                style={{ backgroundColor: colorBgContainer, color: colorText }}
+            >
+                <Suspense fallback={<ForceCurveChartPlaceholder />}>
+                    <ForceCurveChartWrapper
+                        getCurvesPromise={getCurvesPromise}
+                        displayMode={displayMode}
+                        marks={{
+                            peak: marks.includes('peak'),
+                            trough: marks.includes('min'),
+                            bottomOut: marks.includes('bottomOut'),
+                        }}
+                    />
+                </Suspense>
+                <div className="options">
+                    <Form
+                        form={form}
+                        initialValues={{
+                            displayMode,
+                            marks,
+                            darkTheme,
+                            switchTypes,
+                            sortOrder,
+                            invertSort,
+                            bottomOutForce,
+                            bottomOutDistance,
+                            peakForce,
+                        }}
+                        onValuesChange={handleValuesChanged}
+                        layout="vertical"
                     >
-                        provided by ThereminGoat
-                    </a>
-                </p>
-                <p>
-                    <a
-                        href="https://github.com/joelspadin/force-curves-viewer"
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        <GithubFilled /> View on GitHub
-                    </a>
-                </p>
-            </div>
+                        <div className="row">
+                            <Form.Item name="displayMode" label="Chart type">
+                                <Segmented options={displayModeOptions} />
+                            </Form.Item>
+                            <Form.Item name="marks" label="Chart marks">
+                                <Checkbox.Group options={markOptions} />
+                            </Form.Item>
+                            <Form.Item name="darkTheme" label="Theme">
+                                <Segmented options={themeOptions} shape="round" />
+                            </Form.Item>
+                        </div>
+
+                        <Divider orientation="horizontal" titlePlacement="start">
+                            Select Switches
+                        </Divider>
+
+                        <Form.Item>
+                            <ForceCurveSelect
+                                value={curves}
+                                onChange={setCurves}
+                                switchTypes={switchTypes}
+                                sortOrder={sortOrder}
+                                invertSort={invertSort}
+                                bottomOutForce={adjustRange(bottomOutForce)}
+                                bottomOutDistance={adjustRange(bottomOutDistance, 5)}
+                                tactilePeakForce={adjustRange(peakForce)}
+                            />
+                        </Form.Item>
+
+                        <div className="row">
+                            <Form.Item name="switchTypes" label="Feel">
+                                <Segmented options={feelOptions} />
+                            </Form.Item>
+                            <Form.Item name="sortOrder" label="Sort">
+                                <Segmented options={sortOptions} />
+                            </Form.Item>
+                            <Form.Item name="invertSort" label="Order">
+                                <Segmented options={sortOrderOptions} />
+                            </Form.Item>
+                        </div>
+                        <div className="row slider-row">
+                            <Form.Item
+                                name="peakForce"
+                                label="Tactile peak force (g)"
+                                className="slider"
+                            >
+                                <Slider range min={0} max={100} step={5} marks={forceMarks} />
+                            </Form.Item>
+                            <Form.Item
+                                name="bottomOutForce"
+                                label="Bottom out force (g)"
+                                className="slider"
+                            >
+                                <Slider range min={0} max={100} step={5} marks={forceMarks} />
+                            </Form.Item>
+                            <Form.Item
+                                name="bottomOutDistance"
+                                label="Total travel (mm)"
+                                className="slider"
+                            >
+                                <Slider range min={0} max={5} step={0.1} marks={distanceMarks} />
+                            </Form.Item>
+                        </div>
+                    </Form>
+                    <Divider size="small" />
+                </div>
+
+                <div className="site-info">
+                    <p>
+                        All force curve data{' '}
+                        <a
+                            href="https://github.com/ThereminGoat/force-curves"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            provided by ThereminGoat
+                        </a>
+                    </p>
+                    <p>
+                        <a
+                            href="https://github.com/joelspadin/force-curves-viewer"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <GithubFilled /> View on GitHub
+                        </a>
+                    </p>
+                </div>
+            </Layout>
         </AntApp>
     );
 }

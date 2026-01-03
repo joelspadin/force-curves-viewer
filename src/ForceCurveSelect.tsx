@@ -1,6 +1,6 @@
+import type { DefaultOptionType, FilterFunc } from '@rc-component/select/lib/Select';
 import { Divider, Select, Space } from 'antd';
 import fuzzysort from 'fuzzysort';
-import type { DefaultOptionType, FilterFunc } from 'rc-select/lib/Select';
 import React, { Dispatch, useState } from 'react';
 import { CurveFile, ForceCurveMetadata, getForceCurves } from './curve';
 
@@ -76,12 +76,14 @@ export const ForceCurveSelect: React.FC<ForceCurveSelectProps> = ({
             autoFocus
             value={value}
             onChange={onChange}
-            onSearch={setSearch}
             onSelect={clearSearch}
             onDeselect={clearSearch}
             onBlur={clearSearch}
-            filterOption={filterOption}
-            filterSort={(a, b) => filterSort(a, b, props)}
+            showSearch={{
+                filterOption,
+                filterSort: (a, b) => filterSort(a, b, props),
+                onSearch: setSearch,
+            }}
             optionLabelProp="name"
             options={results}
         />
@@ -132,7 +134,7 @@ const OptionLabel: React.FC<OptionLabelProps> = ({ option, result }) => {
     const name = result ? result.highlight((m, i) => <strong key={i}>{m}</strong>) : option.name;
 
     return (
-        <Space split={<Divider type="vertical" />}>
+        <Space separator={<Divider orientation="vertical" />}>
             <span className="name">{name}</span>
             {option.metadata && (
                 <>
