@@ -25,11 +25,11 @@ body {
 }
 
 .slider-row {
-    column-gap: 48px;
+    column-gap: 28px;
 }
 
 .slider {
-    min-width: 220px;
+    min-width: 160px;
     flex: 1;
 }
 

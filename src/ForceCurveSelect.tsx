@@ -16,11 +16,12 @@ interface CurveOption extends DefaultOptionType {
 
 export type SwitchTypeFilter = 'all' | 'linear' | 'tactile';
 
-export type SortOrder = 'alphabetical' | 'bottomOut' | 'tactilePeak' | 'travel';
+export type SortOrder = 'alphabetical' | 'bottomOut' | 'tactilePeak' | 'travel' | 'peakTravel';
 
 export interface SwitchFilterProps {
     switchTypes?: SwitchTypeFilter;
     tactilePeakForce?: [number, number];
+    tactilePeakDistance?: [number, number];
     bottomOutForce?: [number, number];
     bottomOutDistance?: [number, number];
 }
@@ -111,6 +112,15 @@ function filterSort(a: CurveOption, b: CurveOption, props: SwitchSortProps) {
         case 'bottomOut':
             return sign * (a.meta.bottomOut[1] - b.meta.bottomOut[1]);
 
+        case 'peakTravel':
+            if (!a.meta.isTactile) {
+                return b.meta.isTactile ? 1 : 0;
+            }
+            if (!b.meta.isTactile) {
+                return -1;
+            }
+            return sign * (a.meta.tactileMax[0] - b.meta.tactileMax[0]);
+
         case 'tactilePeak':
             if (!a.meta.isTactile) {
                 return b.meta.isTactile ? 1 : 0;
@@ -186,9 +196,14 @@ function filterSwitch(option: CurveFile, props: SwitchFilterProps) {
     }
 
     if (metadata.isTactile) {
+        const tactilePeakDistance = Math.round(metadata.tactileMax[0]);
         const tactilePeakForce = Math.round(metadata.tactileMax[1]);
 
         if (!inRange(tactilePeakForce, props.tactilePeakForce)) {
+            return false;
+        }
+
+        if (!inRange(tactilePeakDistance, props.tactilePeakDistance)) {
             return false;
         }
     }

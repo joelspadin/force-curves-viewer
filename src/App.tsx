@@ -1,4 +1,10 @@
-import { GithubFilled, MoonOutlined, SunOutlined } from '@ant-design/icons';
+import {
+    GithubFilled,
+    MoonOutlined,
+    SortAscendingOutlined,
+    SortDescendingOutlined,
+    SunOutlined,
+} from '@ant-design/icons';
 import {
     App as AntApp,
     Checkbox,
@@ -42,6 +48,7 @@ interface FormValues {
     bottomOutForce: [number, number];
     bottomOutDistance: [number, number];
     peakForce: [number, number];
+    peakDistance: [number, number];
 }
 
 const displayModeOptions: SegmentedOptions<DisplayMode> = [
@@ -71,13 +78,14 @@ const feelOptions: SegmentedOptions<SwitchTypeFilter> = [
 const sortOptions: SegmentedOptions<SortOrder> = [
     { value: 'alphabetical', label: 'Alphabetical' },
     { value: 'tactilePeak', label: 'Peak force' },
+    { value: 'peakTravel', label: 'Peak travel' },
     { value: 'bottomOut', label: 'Bottom out force' },
     { value: 'travel', label: 'Total travel' },
 ];
 
 const sortOrderOptions: SegmentedOptions<boolean> = [
-    { value: false, label: 'Ascending' },
-    { value: true, label: 'Descending' },
+    { value: false, icon: <SortAscendingOutlined />, tooltip: 'Ascending' },
+    { value: true, icon: <SortDescendingOutlined />, tooltip: 'Descending' },
 ];
 
 const forceMarks: SliderMarks = {
@@ -158,6 +166,10 @@ function MainLayout() {
         'forceCurve.tactilePeakForce',
         [0, 100],
     );
+    const [peakDistance, setPeakDistance] = useLocalStorage<[number, number]>(
+        'forceCurve.tactilePeakDistance',
+        [0, 5],
+    );
 
     const [darkTheme, setDarkTheme] = use(DarkThemeContext);
     const [curves, setCurves] = useUrlCurves();
@@ -173,6 +185,7 @@ function MainLayout() {
         bottomOutForce: setBottomOutForce,
         bottomOutDistance: setBottomOutDistance,
         peakForce: setPeakForce,
+        peakDistance: setPeakDistance,
     });
 
     const {
@@ -209,6 +222,7 @@ function MainLayout() {
                             bottomOutForce,
                             bottomOutDistance,
                             peakForce,
+                            peakDistance,
                         }}
                         onValuesChange={handleValuesChanged}
                         layout="vertical"
@@ -239,6 +253,7 @@ function MainLayout() {
                                 bottomOutForce={adjustRange(bottomOutForce)}
                                 bottomOutDistance={adjustRange(bottomOutDistance, 5)}
                                 tactilePeakForce={adjustRange(peakForce)}
+                                tactilePeakDistance={adjustRange(peakDistance, 5)}
                             />
                         </Form.Item>
 
@@ -260,6 +275,13 @@ function MainLayout() {
                                 className="slider"
                             >
                                 <Slider range min={0} max={100} step={5} marks={forceMarks} />
+                            </Form.Item>
+                            <Form.Item
+                                name="peakDistance"
+                                label="Tactile peak travel (mm)"
+                                className="slider"
+                            >
+                                <Slider range min={0} max={5} step={0.1} marks={distanceMarks} />
                             </Form.Item>
                             <Form.Item
                                 name="bottomOutForce"
